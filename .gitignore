@@ -1,0 +1,9 @@
+# Apps Script files
+.clasp.json
+node_modules/
+dist/
+*.log
+
+# Windows extras
+Thumbs.db
+Desktop.ini
