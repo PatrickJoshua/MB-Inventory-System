@@ -37,7 +37,7 @@ function getRowNum(lookupVal, spreadsheet = SpreadsheetApp.getActiveSpreadsheet(
  * @param {SpreadsheetApp.Spreadsheet} [spreadsheet] - Spreadsheet to be protected
  * @return {void}
  */
-function protectDuplicatedSheetLegacy(protectionCellList, spreadsheet = SpreadsheetApp.getActive(), unprotectedRanges = null) {
+function protectDuplicatedSheetLegacy(protectionCellList, spreadsheet = SpreadsheetApp.getActive(), unprotectedRanges = null, env = 'PRD') {
   try {
     spreadsheet.getActiveSheet().protect().remove();
   } catch (e) {
@@ -46,11 +46,12 @@ function protectDuplicatedSheetLegacy(protectionCellList, spreadsheet = Spreadsh
 
   var protection = spreadsheet.getRange('A1').protect();
   const editors = protection.getEditors();
-  protection.removeEditors(editors).addEditor("mbs2edith@gmail.com");
+  const adminEmail = getConfig(env).ADMIN_EMAIL;
+  protection.removeEditors(editors).addEditor(adminEmail);
   //protection.removeEditors(['jemnegad@gmail.com','portugal88erma@gmail.com','simarbalisado@gmail.com','sizzlingstopmain@gmail.com','jmrosin01@gmail.com','mbs2edith@gmail.com','sabandalche1995@gmail.com','kimaubreysaguinsin@gmail.com']);
   //protection.setWarningOnly(true);
   protectionCellList.forEach(function (cellRange) {
-    spreadsheet.getRange(cellRange).protect().removeEditors(editors).addEditor("mbs2edith@gmail.com");
+    spreadsheet.getRange(cellRange).protect().removeEditors(editors).addEditor(adminEmail);
   });
   if (unprotectedRanges != null) {
     console.log("Unprotecting ranges: " + unprotectedRanges);
@@ -58,12 +59,13 @@ function protectDuplicatedSheetLegacy(protectionCellList, spreadsheet = Spreadsh
   }
 }
 
-function protectDuplicatedSheet(unprotectedRangeList, spreadsheet = SpreadsheetApp.getActive()) {
-  var unprotectedRanges = unprotectedRangeList.map((range) => spreadsheet.getRange(range));
-  console.log("Constructed range[]: " + unprotectedRanges.map((x) => x.getA1Notation()));
+function protectDuplicatedSheet(unprotectedRangeList, spreadsheet = SpreadsheetApp.getActive(), env = 'PRD') {
+  var unprotectedRanges = unprotectedRangeList.map(range => spreadsheet.getRange(range));
+  console.log("Constructed range[]: " + unprotectedRanges.map(x => x.getA1Notation()));
   var protection = spreadsheet.getActiveSheet().protect().setDescription("Formula Protection");
   const editors = protection.getEditors();
-  protection.removeEditors(editors).addEditor("mbs2edith@gmail.com");
+  const adminEmail = getConfig(env).ADMIN_EMAIL;
+  protection.removeEditors(editors).addEditor(adminEmail);
   protection.setUnprotectedRanges(unprotectedRanges);
 }
 
@@ -99,7 +101,7 @@ function attendance(rg) {
  * @param {String} Email/SMS subject
  * @return {void}
  */
-function alert(err, subj = "MB RF Inv Err", extraMsg = "") {
+function alert(err, subj = "MB RF Inv Err", extraMsg = "", env = 'PRD') {
   // Send email
   // List of errors to ignore
   errorsToIgnore = [
@@ -107,34 +109,37 @@ function alert(err, subj = "MB RF Inv Err", extraMsg = "") {
     "Service error: Spreadsheets",
     'A sheet with ID "',
     "Timed out"
-  ];
+  ]
+
+  const config = getConfig(env);
+
   if (
     ((errorMsg, errorsToIgnore) => errorsToIgnore.every((ignoreMsg) => !errorMsg.includes(ignoreMsg)))(err.stack, errorsToIgnore)
   ) {
-    MailApp.sendEmail("bakulinglings@gmail.com", subj, err.stack + extraMsg);
+    MailApp.sendEmail(config.ALERT_EMAIL, subj, err.stack + extraMsg);
   }
 
   // Send SMS
-  var smsSheet = getPoSpreadsheet("https://docs.google.com/spreadsheets/d/17yPemlid9FVMdzVDX8Eg8Tu1W-zOg_prNtQeUeEidAg/edit").getSheetByName("SMS");
+  var smsSheet = getPoSpreadsheet(config.SMS_API_URL, env).getSheetByName("SMS");
   var smsLastRow = smsSheet.getLastRow();
   var range = smsSheet.getRange("A" + smsLastRow);
   if (range.isBlank() || range.getValue() == "") {
     smsLastRow = range.getNextDataCell(SpreadsheetApp.Direction.UP).getRow() + 1;
   }
   //smsSheet.getRange("A" + smsLastRow).setValue("+639763715943")
-  smsSheet.getRange("A" + smsLastRow).setValue("+639151272800");
+  smsSheet.getRange("A" + smsLastRow).setValue(config.ALERT_SMS);
   smsSheet.getRange("B" + smsLastRow).setValue(subj + ": " + err.toString() + extraMsg);
   smsSheet.getRange("C" + smsLastRow).insertCheckboxes();
   smsSheet.getRange("C" + smsLastRow).setValue(true);
 }
 
-function protectCompletedSheet(sheet = SpreadsheetApp.getActive().getActiveSheet()) {
+function protectCompletedSheet(sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
   try {
     sheet.protect().remove();
     var protections = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
     var sheetProtect = sheet.protect().setDescription("Prevent changes on past inventories");
     sheetProtect = sheetProtect.removeEditors(sheetProtect.getEditors());
-    sheetProtect.addEditor("mbs2edith@gmail.com");
+    sheetProtect.addEditor(getConfig(env).ADMIN_EMAIL);
 
     for (var i = 0; i < protections.length; i++) {
       var protection = protections[i];
@@ -167,17 +172,17 @@ function activateLastSheet() {
 }
 
 function registerCurrentSheets(propServ = PropertiesService) {
-  propServ.getScriptProperties().setProperty("sheetName", JSON.stringify(SpreadsheetApp.getActiveSpreadsheet().getSheets().map((s) => s.getSheetName())));
+  propServ.getScriptProperties().setProperty("sheetName", JSON.stringify(SpreadsheetApp.getActiveSpreadsheet().getSheets().map(s => s.getSheetName())));
 }
 
-function deleteUnregisteredSheets(e, propServ = PropertiesService, lockServ = LockService) {
+function deleteUnregisteredSheets(e, propServ = PropertiesService, lockServ = LockService, env = 'PRD') {
   const lock = lockServ.getDocumentLock();
   if (lock.tryLock(350000)) {
     try {
       if (e.changeType != "INSERT_GRID") return;
       const sheetNames = JSON.parse(propServ.getScriptProperties().getProperty("sheetName"));
-      const dumpSite = getPoSpreadsheet("https://docs.google.com/spreadsheets/d/1rPiSSJlbfLDKjqofRxqh1DR1lP5VYS67SFBp99to5Iw/edit");
-      e.source.getSheets().forEach((s) => {
+      const dumpSite = getPoSpreadsheet(getConfig(env).DUMP_SITE_URL, env);
+      e.source.getSheets().forEach(s => {
         var sheetName = s.getSheetName();
         if (!sheetNames.includes(sheetName)) {
           console.log("Moving to dumpsite: " + sheetName);
@@ -204,7 +209,8 @@ function generateWeekDayColor(dt) {
     '#00FFFF',  // cyan
     '#0000FF',  // blue
     '#FF00FF',  // magenta
-  ];
+    '#FF00FF',  // magenta
+  ]
   var day = dt.getDay();
   console.log("Generating color for date: " + dt + " = " + day);
 
@@ -225,7 +231,7 @@ function generateColor(str) {
   return colour;
 }
 
-function duplicateSheet(spreadsheet, sheetName) {
+function duplicateSheet(spreadsheet, sheetName, env = 'PRD') {
   try {
     spreadsheet.duplicateActiveSheet();
     var currentSheet = spreadsheet.getActiveSheet();
@@ -233,7 +239,7 @@ function duplicateSheet(spreadsheet, sheetName) {
   } catch (e) {
     if (e.message.includes("already exists")) {
       console.log("Dumping '" + currentSheet.getSheetName() + "' due to error: " + e.stack);
-      const dumpSite = getPoSpreadsheet("https://docs.google.com/spreadsheets/d/1rPiSSJlbfLDKjqofRxqh1DR1lP5VYS67SFBp99to5Iw/edit");
+      const dumpSite = getPoSpreadsheet(getConfig(env).DUMP_SITE_URL, env);
       currentSheet.copyTo(dumpSite);
       spreadsheet.deleteSheet(currentSheet);
     }
@@ -271,7 +277,7 @@ function getStoreCodes() {
   return ["3252", "3361"];
 }
 
-function getCashFlowSheet(storeName) {
+function getCashFlowSheet(storeName, env = 'PRD') {
   // Store switch
   var cashFlowSheetName = "Cash flow";
   if (storeName != "RF") {
@@ -279,50 +285,29 @@ function getCashFlowSheet(storeName) {
   }
   console.log("Constructing cash flow sheet name: " + cashFlowSheetName);
 
-  var cashFlowSheet = getPoSpreadsheet().getSheetByName(cashFlowSheetName);
+  var cashFlowSheet = getPoSpreadsheet(undefined, env).getSheetByName(cashFlowSheetName);
 
   console.log("Acquired cash flow sheet: " + cashFlowSheet.getSheetName());
 
   return cashFlowSheet;
 }
 
-function getInventoryUrl(storeCode) {
-  console.log("Store code: " + storeCode);
-  var urlMap = new Map();
-  urlMap.set("3252", 'https://docs.google.com/spreadsheets/d/1XxOw-t7q60ULv59GzABMn4uEouFZlZrYtMOMsoLtAtA/edit');
-  urlMap.set("3361", 'https://docs.google.com/spreadsheets/d/1rwW-JantrQTuEg2Uzez6XR0xcvceOFbMVuke1t2Idak/edit');
+function getInventoryUrl(storeCode, env = 'PRD') {
+  return getInventoryUrlByConfig(storeCode, env);
+}
 
-  var url = urlMap.get(storeCode + "");
-  console.log("Acquired URL: " + url);
+function getArchiveInventoryUrl(storeCode, env = 'PRD') {
+  return getArchiveUrlByConfig(storeCode, env);
+}
+
+function getPoUrl(env = 'PRD') {
+  return getPoUrlByConfig(env);
+}
+
+function getPoSpreadsheet(url, env = 'PRD') {
   if (!url) {
-    throw new Error("Unable to lookup URL for store code: " + storeCode);
-  } else {
-    return url;
+    url = getPoUrl(env);
   }
-
-  var inventoryUrl = 'https://docs.google.com/spreadsheets/d/1XxOw-t7q60ULv59GzABMn4uEouFZlZrYtMOMsoLtAtA/edit';
-  if (storeCode == "3361") {
-    console.log("Switching inventoryUrl");
-    inventoryUrl = 'https://docs.google.com/spreadsheets/d/1rwW-JantrQTuEg2Uzez6XR0xcvceOFbMVuke1t2Idak/edit';
-  }
-  return inventoryUrl;
-}
-
-function getArchiveInventoryUrl(storeCode) {
-  console.log("Store code: " + storeCode);
-  var inventoryUrl = 'https://docs.google.com/spreadsheets/d/1-31Kf3SsdMhNu1D9ziwBvqlhI6LUTlMgO3PD-vUTNkM/edit';
-  if (storeCode == "3361") {
-    console.log("Switching inventoryUrl");
-    inventoryUrl = 'https://docs.google.com/spreadsheets/d/1QasIoOag67V1I_ePVT_-LaENPTA0Ah1cPIu7uo-q7XE/edit';
-  }
-  return inventoryUrl;
-}
-
-function getPoUrl() {
-  return 'https://docs.google.com/spreadsheets/d/10IGAlAy_4LqyFgi3UNAVHBDy9hp69yJOd6oQVhL4JLk/edit';
-}
-
-function getPoSpreadsheet(url = getPoUrl()) {
   while (true) {
     try {
       return SpreadsheetApp.openByUrl(url);
@@ -412,7 +397,7 @@ function endsWithSpaceAndNumber(str) {
 
 function cleanupCopies(customStartIndex = -50, customEndIndex = -1) {
   const ss = SpreadsheetApp.getActive();
-  ss.getSheets().slice(customStartIndex, customEndIndex).filter((s) => s.getSheetName().startsWith("Copy of ") || s.getSheetName().startsWith("Kopya ng ") || endsWithSpaceAndNumber(s.getSheetName()) || (s.getSheetName().startsWith("Sheet") && s.getSheetName() != "Sheet1")).forEach((s) => {
+  ss.getSheets().slice(customStartIndex, customEndIndex).filter(s => s.getSheetName().startsWith("Copy of ") || s.getSheetName().startsWith("Kopya ng ") || endsWithSpaceAndNumber(s.getSheetName()) || (s.getSheetName().startsWith("Sheet") && s.getSheetName() != "Sheet1")).forEach(s => {
     if (s.getSheetName().startsWith("Sheet")) {
       console.log(`Deleting sheet: ${s.getSheetName()}`);
       ss.deleteSheet(s);
@@ -435,7 +420,7 @@ function cleanupCopies(customStartIndex = -50, customEndIndex = -1) {
 
 function rasterizeSheets(customRgFormulaCheck = "B2", customStartIndex = -50, customEndIndex = -1) {
   const ss = SpreadsheetApp.getActive();
-  ss.getSheets().slice(customStartIndex, customEndIndex).filter((s) => s.getRange(customRgFormulaCheck).getFormula().substring(0, 1) == "=").forEach((s) => {
+  ss.getSheets().slice(customStartIndex, customEndIndex).filter(s => s.getRange(customRgFormulaCheck).getFormula().substring(0, 1) == "=").forEach(s => {
     console.log(`Rasterizing ${s.getSheetName()}`);
     const rg = s.getRange(1, 1, s.getLastRow(), s.getLastColumn());
     rg.setDataValidation(null);

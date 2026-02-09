@@ -33,7 +33,7 @@ function installedOnChange(e) {
   deleteUnregisteredSheets(e);
 }
 
-function installedOnEditTrigger(e, propServ = PropertiesService) {
+function installedOnEditTrigger(e, propServ = PropertiesService, env = 'PRD') {
   let rg = e.range;
   // console.log(`[DEBUG] Acquired range from event: ${JSON.stringify(rg, null, 2)}`);
   // // Check if more than one cell was edited to determine the right strategy.
@@ -53,9 +53,9 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
 
       /*if (SpreadsheetApp.getActive().getSheetName() == "Attendance") {    // Insert checkboxes on attendance sheet
         if (a1Not == "H1") {
-          triggerFuncWithProcessingText(a1Not, function() {archiveAttendance(e)}, spreadsheet)
+          triggerFuncWithProcessingText(a1Not, function() {archiveAttendance(e)}, spreadsheet);
         } else {
-          attendance(rg)
+          attendance(rg);
         }
         return;
 
@@ -97,11 +97,11 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
         spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).clear({ contentsOnly: true, skipFilteredRows: true });
         spreadsheet.getRange(getDupLabelCol() + (endRow + 43)).setValue('OK').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
         spreadsheet.getRange('B' + (endRow + 45)).setValue('New tab created: "' + newSheetName + '"').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
-        actualNewshift(dateObj, shiftTime, empName, propServ);
+        actualNewshift(dateObj, shiftTime, empName, propServ, env);
 
       } else if (a1Not == 'A' + (endRow + 31)) {  // Get delivery
         console.log("Get delivery");
-        getDelivery(getStoreCodeByName(sheet.getRange("A1").getValue()));
+        getDelivery(getStoreCodeByName(sheet.getRange("A1").getValue()), sheet, env);
 
       } else if (a1Not == 'A' + (endRow + 33)) {  // Hide old -2
         console.log("Hide old sheets");
@@ -127,7 +127,7 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
 
       } else if (a1Not == 'A' + (endRow + 43)) {  // Show unverified
         console.log("Unlock sheet");
-        protectDuplicatedSheet(getMBUnprotectedRangeList(), spreadsheet);
+        protectDuplicatedSheet(getMBUnprotectedRangeList(), spreadsheet, env);
 
       } else if (a1Not == 'A' + (endRow + 44)) {  // Auto-formula deliver to ending
         console.log("Auto-formula deliver to ending");
@@ -156,24 +156,24 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
         // var dagdagPeraSaKaha = sheet.getRange(getTotalCol() + (endRow+11)).getValue()
         // var spoiled = sheet.getRange(getTotalCol() + (endRow+6)).getValue()
 
-        let expectedSales = totalColVals[0][0];
-        let sales = totalColVals[1][0];
-        let gcash = totalColVals[2][0];
-        let expenses = totalColVals[3][0];
-        let spoiled = totalColVals[4][0];
-        let cashAdvance = totalColVals[8][0];
-        let dagdagPeraSaKaha = totalColVals[9][0];
+        let expectedSales = totalColVals[0][0]
+        let sales = totalColVals[1][0]
+        let gcash = totalColVals[2][0]
+        let expenses = totalColVals[3][0]
+        let spoiled = totalColVals[4][0]
+        let cashAdvance = totalColVals[8][0]
+        let dagdagPeraSaKaha = totalColVals[9][0]
         var overLoss = sheet.getRange(getLossOverCol() + (endRow + 3)).getValue();
 
         var storeName = sheet.getRange("A1").getValue();
-        addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, storeCode = getStoreCodeByName(storeName));
+        addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, getStoreCodeByName(storeName), undefined, env);
 
         rg.setValue(currentContent);
         SpreadsheetApp.flush();
         rg.check();
 
       } else if (a1Not == getLossOverCol() + (endRow + 10)) { // Verify delivery
-        verifyDelivery(rg, endRow, sheet);
+        verifyDelivery(rg, endRow, sheet, env);
       } else if (a1Not == getLossOverCol() + (endRow + 9)) { // Force check the collect checkbox if processing timed-out
         sheet.getRange(getTotalCol() + (endRow + 9)).check();
         sheet.getRange(getLossOverCol() + (endRow + 9)).setValue("Verified");
@@ -200,7 +200,7 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
 
     }
   } catch (e) {
-    alert(e);
+    alert(e, "MB RF Inv Err", " [Non-fatal]", env);
     if (!e.stack.includes("already has sheet protection") || !e.stack.includes("failed while accessing document with id") || !e.stack.includes("Timed out")) {
       SpreadsheetApp.getActive().getRange('B' + (endRow + 45)).setValue("ERROR. PLEASE REPORT. \n" + e.stack).setFontColor("red");
     }

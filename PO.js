@@ -141,11 +141,11 @@ function installedOnEdit(e) {
 
 
 
-function pullLatestEnding(storeCode, sheet = SpreadsheetApp.getActive().getActiveSheet(), isGenerateReport = true) {
+function pullLatestEnding(storeCode, sheet = SpreadsheetApp.getActive().getActiveSheet(), isGenerateReport = true, env = 'PRD') {
     console.log("Pulling latest ending for store " + storeCode);
-    var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode));
+    var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
     var inventorySheets = inventorySpreadsheet.getSheets();
-    var latestInvSheet = inventorySheets[inventorySheets.length - 1];
+    var latestInvSheet = inventorySheets[inventorySheets.length - 1]
     const endRow = Utils.getEndRow(latestInvSheet);
 
     var stocksCol = "D";
@@ -168,12 +168,12 @@ function pullLatestEnding(storeCode, sheet = SpreadsheetApp.getActive().getActiv
     // console.log(ending.toString())
     // spreadsheet.getRange('Z2:Z' + endRow).setValues(ending)
     if (isGenerateReport)
-        generateReport('', 'M', storeCode, generateReportOffset);
+        generateReport('', 'M', storeCode, generateReportOffset, env);
 
     return latestInvSheet;
 }
 
-function nextPO(storeCode) {
+function nextPO(storeCode, env = 'PRD') {
     console.log("Generating next PO for store " + storeCode);
     var spreadsheet = SpreadsheetApp.getActive();
 
@@ -215,14 +215,14 @@ function nextPO(storeCode) {
     const prevSheetProjSalesRg = prevSheet.getRange("G7");
     prevSheetProjSalesRg.setValue(prevSheetProjSalesRg.getValue());
 
-    pullLatestEnding(storeCode, spreadsheet, true);
+    pullLatestEnding(storeCode, spreadsheet, true, env);
     //generateReport('', 'M', storeCode);
     prevSheet.hideSheet();
 }
 
-function generateReport(reportName, column, storeCode, rightOffset = 0) {
+function generateReport(reportName, column, storeCode, rightOffset = 0, env = 'PRD') {
     console.log("Generating report for store " + storeCode);
-    var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode));
+    var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
     var inventorySheets = inventorySpreadsheet.getSheets();
     //var inventorySheets = _inventorySheets//.slice(60)
 
@@ -249,8 +249,8 @@ function generateReport(reportName, column, storeCode, rightOffset = 0) {
     console.log("Number of inventories: " + inventorySheetsLength);
 
     // Archive old sheets
-    const sheetsToRetain = 30; //inventorySheetsLength-20 //30
-    var archiveSpreadsheet = SpreadsheetApp.openByUrl(Utils.getArchiveInventoryUrl(storeCode));
+    const sheetsToRetain = 30 //inventorySheetsLength-20 //30;
+    var archiveSpreadsheet = SpreadsheetApp.openByUrl(Utils.getArchiveInventoryUrl(storeCode, env));
     if (inventorySheetsLength > sheetsToRetain + 2) {
         let today = new Date();
         let year = today.getFullYear() - 2000;
@@ -350,7 +350,7 @@ function generateReport(reportName, column, storeCode, rightOffset = 0) {
     //reportSheet.hideColumns(22)
 }
 
-function addPoToCashFlow(storeCode) {
+function addPoToCashFlow(storeCode, env = 'PRD') {
     var spreadsheet = SpreadsheetApp.getActive();
     var confirmationText = spreadsheet.getRange('O66').getValue();
     const dt = Utilities.formatDate(new Date(spreadsheet.getRange('O35').getValue()), "GMT+8", "MM/dd");
@@ -391,8 +391,9 @@ function addPoToCashFlow(storeCode) {
     spreadsheet.getRange('P77').setFontColor("green").setFontWeight("bold").setFontStyle("italic").setValue("Added " + amt + " to Cash flow sheet");
 }
 
-function sendPO(smsApiUrl = "https://docs.google.com/spreadsheets/d/17yPemlid9FVMdzVDX8Eg8Tu1W-zOg_prNtQeUeEidAg/edit") {
-    console.log("Sending PO");
+function sendPO(env = 'PRD') {
+    const smsApiUrl = getSmsApiUrlByConfig(env);
+    console.log("Sending PO to " + smsApiUrl);
     var spreadsheet = SpreadsheetApp.getActive();
     var poNum = spreadsheet.getRange("U58").getValue();
     var poStr = spreadsheet.getRange("O58").getValue();
@@ -406,8 +407,9 @@ function sendPO(smsApiUrl = "https://docs.google.com/spreadsheets/d/17yPemlid9FV
     spreadsheet.getRange("U63").setFormula(importRange);
 }
 
-function confirmPO(smsApiUrl = "https://docs.google.com/spreadsheets/d/17yPemlid9FVMdzVDX8Eg8Tu1W-zOg_prNtQeUeEidAg/edit") {
-    console.log("Confirming PO");
+function confirmPO(env = 'PRD') {
+    const smsApiUrl = getSmsApiUrlByConfig(env);
+    console.log("Confirming PO at " + smsApiUrl);
     var spreadsheet = SpreadsheetApp.getActive();
     var smsRow = spreadsheet.getRange("U74").getValue();
     var smsApiSheet = SpreadsheetApp.openByUrl(smsApiUrl).getSheetByName("SMS");
@@ -533,8 +535,8 @@ function appendToCashCollected(sheet = SpreadsheetApp.getActiveSheet()) {
     SpreadsheetApp.flush();
 }
 
-function extractExpensesLoop(storeCode = "3361") {
-    var inventorySpreadSheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode));
+function extractExpensesLoop(storeCode = "3361", env = 'PRD') {
+    var inventorySpreadSheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
     console.log("Spreadsheet name: " + inventorySpreadSheet.getName());
     var sheets = inventorySpreadSheet.getSheets();
     var props = PropertiesService.getScriptProperties();
@@ -546,7 +548,7 @@ function extractExpensesLoop(storeCode = "3361") {
         var dt = split[0];
         var employeeName = split[2];
         //console.log("Extracting expenses on: " + inventorySheetName)
-        Utils.extractExpenses(dt, employeeName, storeCode, inventorySheet);
+        Utils.extractExpenses(dt, employeeName, storeCode, inventorySheet, undefined, env);
         //console.log("current index: " + i)
         props.setProperty("expenseIndexCounter", i);
         SpreadsheetApp.flush();
@@ -570,13 +572,13 @@ function adhocExtractExpensesFromCashFlow() {
     }
 }
 
-function pattyDistribution(spreadsheet = SpreadsheetApp.getActive()) {
+function pattyDistribution(spreadsheet = SpreadsheetApp.getActive(), env = 'PRD') {
     console.log("Update Patty distribution");
 
     Utils.getStoreCodes().forEach((storeCode) => {
         console.log("Current store code: " + storeCode);
 
-        var lastPoSheet = Utils.getLastPoSheet(storeCode);
+        var lastPoSheet = Utils.getLastPoSheet(storeCode, env);
 
         // pull latest
         // pullLatestEnding(storeCode, lastPoSheet, false)
@@ -609,10 +611,10 @@ function pattyDistribution(spreadsheet = SpreadsheetApp.getActive()) {
     });
 
     // Update Inventory Replica
-    updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica"));
+    updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica"), env);
 }
 
-function updateInventoryReplica(sheet = SpreadsheetApp.getActive().getActiveSheet()) {
+function updateInventoryReplica(sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
     // let map = new Map();
     // map.set("3252", "A2")
     // map.set("3361", "P2")
@@ -625,7 +627,7 @@ function updateInventoryReplica(sheet = SpreadsheetApp.getActive().getActiveShee
         //console.log("Scanning " + storeCode)
         if (storeCodes.includes(String(storeCode))) {
             console.log("Found " + storeCode);
-            let sheets = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode)).getSheets();
+            let sheets = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env)).getSheets();
             let lastSheetName = sheets[sheets.length - 1].getSheetName();
             sheet.getRange(2, ++i).setValue(lastSheetName);
             processedStoreCodes++;
@@ -641,7 +643,7 @@ function updateInventoryReplica(sheet = SpreadsheetApp.getActive().getActiveShee
     // })
 }
 
-function addGcashToCashReceived(rg, gcashSheet = SpreadsheetApp.getActive().getActiveSheet()) {
+function addGcashToCashReceived(rg, gcashSheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
     let rgRow = rg.getRow();
     let rgCol = rg.getColumn();
 
@@ -724,9 +726,9 @@ function addGcashToCashReceived(rg, gcashSheet = SpreadsheetApp.getActive().getA
     // Note: optimize the loops above to minimize getRange(), getValue(), clear(), and check() operations
 }
 
-function getUnverifiedSheets(sheet = SpreadsheetApp.getActiveSheet()) {
+function getUnverifiedSheets(sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
     let storeCode = sheet.getRange("A1").getValue();
-    let inventorySheet = Utils.getPoSpreadsheet(Utils.getInventoryUrl(storeCode));
+    let inventorySheet = Utils.getPoSpreadsheet(Utils.getInventoryUrl(storeCode, env), env);
     let unverifiedSheets = Utils.showUnverifiedSheets(inventorySheet);
     let spreadsheet = sheet.getParent();
 
@@ -743,7 +745,7 @@ function getUnverifiedSheets(sheet = SpreadsheetApp.getActiveSheet()) {
     });
 }
 
-function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive()) {
+function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive(), env = 'PRD') {
     let sheet = spreadsheet.getActiveSheet();
     let endRow = Utils.getEndRow(sheet);
 
@@ -751,7 +753,7 @@ function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive()) 
         //sheet.getRange(a1Not).setValue("Processing...")
         sheet.setName(sheet.getSheetName().substring(1));  // Remove the asterisk
 
-        let inventorySpreadsheet = Utils.getPoSpreadsheet(Utils.getInventoryUrl(Utils.getStoreCodeByName(sheet.getRange("A1").getValue())));
+        let inventorySpreadsheet = Utils.getPoSpreadsheet(Utils.getInventoryUrl(Utils.getStoreCodeByName(sheet.getRange("A1").getValue()), env), env);
         let inventorySheet = inventorySpreadsheet.getSheetByName(sheet.getSheetName());
         console.log(`Referenced inventory name: ${inventorySheet.getSheetName()}`);
 
@@ -761,11 +763,11 @@ function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive()) 
         let modifiedEvent = { e, range: inventorySheet.getRange(a1Not), source: inventorySpreadsheet };
         //console.log(e.range.isChecked());
 
-        Utils.installedOnEditTrigger(modifiedEvent); // Trigger the inventory function
-        spreadsheet.deleteSheet(sheet);  // Delete the replica sheet on PO
+        Utils.installedOnEditTrigger(modifiedEvent, undefined, env) // Trigger the inventory function;
+        spreadsheet.deleteSheet(sheet)  // Delete the replica sheet on PO;
     }
 }
 
-function autoUpdateInventoryReplica(e) {
-    updateInventoryReplica(SpreadsheetApp.getActive().getSheetByName("InventoryReplica"));
+function autoUpdateInventoryReplica(e, env = 'PRD') {
+    updateInventoryReplica(SpreadsheetApp.getActive().getSheetByName("InventoryReplica"), env);
 }

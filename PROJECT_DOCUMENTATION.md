@@ -89,7 +89,32 @@ graph TB
 - **PO Spreadsheet**: `10IGAlAy_4LqyFgi3UNAVHBDy9hp69yJOd6oQVhL4JLk`
 - **SMS API**: `17yPemlid9FVMdzVDX8Eg8Tu1W-zOg_prNtQeUeEidAg`
 - **RF Archive**: `1-31Kf3SsdMhNu1D9ziwBvqlhI6LUTlMgO3PD-vUTNkM`
-- **PCGH Archive**: `1QasIoOag67V1I_ePVT_-LaENPTA0Ah1cPIu7uo-q7XE`
+- **PCGH Archive**: `1QasIoOag67V1I_ePVT_-LaENPTA0Ah1cPI7uo-q7XE`
+
+---
+
+## Environment Configuration
+
+The system now supports multiple environments (PRD, DEV) through a centralized configuration file `Config.js`.
+
+### Configuration File (`Config.js`)
+
+Contains `ENV` object with `PRD` and `DEV` keys. Each environment object holds specific URLs and email addresses.
+
+- **PRD**: Production environment with live URLs and notifications enabled.
+- **DEV**: Development environment with testing URLs (some are placeholders) and notifications directed to testing channels if configured.
+
+### Using Configuration
+
+Helper functions in `Config.js` provide easy access to environment-specific values:
+
+- `getConfig(env)`: Returns the full configuration object for the specified environment.
+- `getInventoryUrlByConfig(storeCode, env)`: Returns inventory spreadsheet URL.
+- `getArchiveUrlByConfig(storeCode, env)`: Returns archive spreadsheet URL.
+- `getPoUrlByConfig(env)`: Returns PO spreadsheet URL.
+- `getSmsApiUrlByConfig(env)`: Returns SMS API spreadsheet URL.
+
+The `env` parameter defaults to `'PRD'` in all functions, ensuring backward compatibility while allowing explicit environment selection when needed.
 
 ---
 
