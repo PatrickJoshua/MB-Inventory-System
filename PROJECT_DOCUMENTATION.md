@@ -180,23 +180,41 @@ sequenceDiagram
 
 ### 2. Sales Collection
 
-Triggered by checkbox at `M{endRow+9}`:
+Triggered by checkbox at `M{endRow+9}`. Uses `LockService` for concurrency control:
 
 ```mermaid
 sequenceDiagram
     participant INV as Inventory Sheet
+    participant LOCK as Script Lock
     participant CF as Cash Flow
     participant EXP as Raw Expenses
-    participant GCASH as GCash Sheet
+    participant SENIOR as Senior/PWD Sheet
     
-    INV->>INV: Wait for previous sheet completion
-    INV->>CF: Record sales, GCash, expenses, over/loss
-    INV->>EXP: Extract individual expenses
-    INV->>GCASH: Copy Senior/PWD transactions
+    Note over INV: PHASE 1: Pre-Processing
+    INV->>INV: Prepare cash flow row data
+    INV->>INV: Read expense data from sheet
+    INV->>INV: Read Senior/PWD data from sheet
+    
+    Note over INV,LOCK: PHASE 2: Lock Acquisition
+    INV->>LOCK: tryLock(180000) [3 min timeout]
+    LOCK-->>INV: Lock acquired
+    
+    Note over INV,SENIOR: PHASE 3: Write Operations
+    INV->>CF: Write sales row (batch)
+    INV->>EXP: Write expenses (batch)
+    INV->>SENIOR: Write Senior/PWD entries (batch)
+    
+    Note over INV: PHASE 4: Post-Write
     INV->>INV: Mark as "Verified"
-    INV->>INV: Conceal salary entries
-    INV->>INV: Auto-hide sheet
+    INV->>INV: Hide sheet, conceal salaries
+    INV->>LOCK: releaseLock()
 ```
+
+**Key Features:**
+- **Pre-processing**: All data collected before lock acquisition to minimize lock hold time
+- **3-minute timeout**: Uses `LockService.getScriptLock().tryLock(180000)` 
+- **Batch writes**: Multiple rows written in single API calls for efficiency
+- **Guaranteed cleanup**: Lock released in `finally` block even if errors occur
 
 ### 3. Purchase Order Workflow
 
