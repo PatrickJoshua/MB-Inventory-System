@@ -20,7 +20,7 @@ function manualTrigger(rangeStr) {
   const e = {
     source: SpreadsheetApp.getActive(),
     range: SpreadsheetApp.getActiveSheet().getRange(rangeStr),
-    isChecked: true
+    isChecked: true,
   };
   installedOnEditTrigger(e);
 }
@@ -166,7 +166,7 @@ function installedOnEditTrigger(e, propServ = PropertiesService, env = 'PRD') {
         var overLoss = sheet.getRange(getLossOverCol() + (endRow + 3)).getValue();
 
         var storeName = sheet.getRange("A1").getValue();
-        addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, getStoreCodeByName(storeName), undefined, env);
+        addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, getStoreCodeByName(storeName), LockService, env);
 
         rg.setValue(currentContent);
         SpreadsheetApp.flush();

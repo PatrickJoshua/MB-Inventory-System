@@ -285,7 +285,7 @@ function getCashFlowSheet(storeName, env = 'PRD') {
   }
   console.log("Constructing cash flow sheet name: " + cashFlowSheetName);
 
-  var cashFlowSheet = getPoSpreadsheet(undefined, env).getSheetByName(cashFlowSheetName);
+  var cashFlowSheet = getPoSpreadsheet(null, env).getSheetByName(cashFlowSheetName);
 
   console.log("Acquired cash flow sheet: " + cashFlowSheet.getSheetName());
 

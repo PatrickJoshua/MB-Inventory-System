@@ -342,3 +342,17 @@ Used for:
 
 ### Purchase Orders (PO.js target)  
 - [PO Management Sheet](https://docs.google.com/spreadsheets/d/1cFNpUtPZlsgSfeufeNNt5quGvpcrpfUyZzvUhoEMtNg/edit)
+
+---
+
+## Agent Instructions
+
+### Code.js
+- [Code.js](Code.js)
+
+### PO.js
+- [PO.js](PO.js)
+- Do not remove the "Utils" namespace in this file. Assume that "Utils" namespace will contain all other java script files in this project.
+
+### Utils.js
+- [Utils.js](Utils.js)

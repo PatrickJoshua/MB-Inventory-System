@@ -548,7 +548,7 @@ function extractExpensesLoop(storeCode = "3361", env = 'PRD') {
         var dt = split[0];
         var employeeName = split[2];
         //console.log("Extracting expenses on: " + inventorySheetName)
-        Utils.extractExpenses(dt, employeeName, storeCode, inventorySheet, undefined, env);
+        Utils.extractExpenses(dt, employeeName, storeCode, Utils.getEndRow(inventorySheet), inventorySheet, env);
         //console.log("current index: " + i)
         props.setProperty("expenseIndexCounter", i);
         SpreadsheetApp.flush();
@@ -728,8 +728,8 @@ function addGcashToCashReceived(rg, gcashSheet = SpreadsheetApp.getActive().getA
 
 function getUnverifiedSheets(sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
     let storeCode = sheet.getRange("A1").getValue();
-    let inventorySheet = Utils.getPoSpreadsheet(Utils.getInventoryUrl(storeCode, env), env);
-    let unverifiedSheets = Utils.showUnverifiedSheets(inventorySheet);
+    let inventorySheet = getPoSpreadsheet(getInventoryUrl(storeCode, env), env);
+    let unverifiedSheets = showUnverifiedSheets(inventorySheet);
     let spreadsheet = sheet.getParent();
 
     unverifiedSheets.forEach((unverifiedSheet) => {
@@ -753,7 +753,7 @@ function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive(), 
         //sheet.getRange(a1Not).setValue("Processing...")
         sheet.setName(sheet.getSheetName().substring(1));  // Remove the asterisk
 
-        let inventorySpreadsheet = Utils.getPoSpreadsheet(Utils.getInventoryUrl(Utils.getStoreCodeByName(sheet.getRange("A1").getValue()), env), env);
+        let inventorySpreadsheet = getPoSpreadsheet(getInventoryUrl(getStoreCodeByName(sheet.getRange("A1").getValue()), env), env);
         let inventorySheet = inventorySpreadsheet.getSheetByName(sheet.getSheetName());
         console.log(`Referenced inventory name: ${inventorySheet.getSheetName()}`);
 
@@ -763,7 +763,7 @@ function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive(), 
         let modifiedEvent = { e, range: inventorySheet.getRange(a1Not), source: inventorySpreadsheet };
         //console.log(e.range.isChecked());
 
-        Utils.installedOnEditTrigger(modifiedEvent, undefined, env) // Trigger the inventory function;
+        Utils.installedOnEditTrigger(modifiedEvent, PropertiesService, env) // Trigger the inventory function;
         spreadsheet.deleteSheet(sheet)  // Delete the replica sheet on PO;
     }
 }

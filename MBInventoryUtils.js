@@ -616,7 +616,7 @@ function writePreparedExpenses(expenseData, env = 'PRD') {
     return;
   }
 
-  var expenseSheetPO = getPoSpreadsheet(undefined, env).getSheetByName(expenseData.expenseSheetName);
+  var expenseSheetPO = getPoSpreadsheet(null, env).getSheetByName(expenseData.expenseSheetName);
   var expenseSheetPOLastRow = expenseSheetPO.getRange("A:A").getValues().filter(String).length;
 
   // Batch write all expenses
@@ -633,7 +633,7 @@ function writePreparedExpenses(expenseData, env = 'PRD') {
  * @return {Object} Contains storeName, sheetName, columnIndex, and rowsToWrite array
  */
 function prepareSeniorData(endRow, sheet, env = 'PRD') {
-  let poSheet = getPoSpreadsheet(undefined, env).getSheetByName("Senior/PWD");
+  let poSheet = getPoSpreadsheet(null, env).getSheetByName("Senior/PWD");
   let storeName = sheet.getRange("A1").getValue();
   let sheetName = sheet.getSheetName();
 
@@ -681,7 +681,7 @@ function writePreparedSeniorData(seniorData, env = 'PRD') {
     return;
   }
 
-  let poSheet = getPoSpreadsheet(undefined, env).getSheetByName("Senior/PWD");
+  let poSheet = getPoSpreadsheet(null, env).getSheetByName("Senior/PWD");
 
   // Detect last row for this store's column
   let columnLetter = String.fromCharCode(seniorData.targetColumnIndex + 65 + 1);  // 3rd col (offset by 2)
@@ -718,7 +718,7 @@ function cashCollectedAppenderWithSheetObj(cashFlowSheet, dt, sales, cashAdvance
   cashFlowSheet.getRange(count+1,11).setValue(expectedSales);
   cashFlowSheet.getRange(count+1,12).setValue(spoiled);
   cashFlowSheet.getRange(count+1,13).setValue(overLoss);
-  cashFlowSheet.getRange(count+1,14).setValue(employeeName);*/
+  cashFlowSheet.getRange(count+1,14).setValue(employeeName);*/;
 
   // new implem
   let rowToBeWritten = [[dt, sales + cashAdvance, gcash, expenses, expectedSales, spoiled, overLoss, employeeName]];
@@ -742,7 +742,7 @@ function extractExpenses(dt, employeeName, storeCode = "3252", endRow = getEndRo
   if (storeCode == "3361") {
     expenseSheetName = expenseSheetName + " - PCGH";
   }
-  var expenseSheetPO = getPoSpreadsheet(undefined, env).getSheetByName(expenseSheetName);
+  var expenseSheetPO = getPoSpreadsheet(null, env).getSheetByName(expenseSheetName);
   var expenseSheetPOLastRow = expenseSheetPO.getRange("A:A").getValues().filter(String).length;
   console.log("Extracted expense sheet: " + sheet.getSheetName());
   var lastRow = getEndRow(sheet);
@@ -828,7 +828,7 @@ function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getA
         value = poMap.get("FT")/5;
       } else {
         value = poMap.get(item.split(" ")[0]);
-      }*/
+      }*/;
       var powderItem = item.split(" ")[0];
       value = poMap.get(powderItem);
       if (["FT", "CLT"].includes(powderItem)) {
@@ -876,7 +876,7 @@ function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getA
 }
 
 function getPoSheets(storeCode, env = 'PRD') {
-  let poSpreadsheet = getPoSpreadsheet(undefined, env);
+  let poSpreadsheet = getPoSpreadsheet(null, env);
   let poSheets = poSpreadsheet.getSheets();
   let filteredSheets = poSheets.filter((sheet) => sheet.getName().includes(storeCode));
   console.log("Extracted PO sheets: " + filteredSheets.map((x) => x.getSheetName()));
@@ -913,7 +913,7 @@ function constructPoMap(sheet) {
 function collectGcashToPo(endRow = getEndRow(), sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
   console.log("Collecting Gcash transactions to PO");
 
-  let poSheet = getPoSpreadsheet(undefined, env).getSheetByName("GCash");
+  let poSheet = getPoSpreadsheet(null, env).getSheetByName("GCash");
   let storeName = sheet.getRange("A1").getValue();
   //let storeCode = getStoreCodeByName(storeName)
   let sheetName = sheet.getSheetName();
@@ -967,7 +967,7 @@ function collectGcashToPo(endRow = getEndRow(), sheet = SpreadsheetApp.getActive
 function collectSeniorToPo(endRow = getEndRow(), sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
   console.log("Collecting Senior/PWD transactions to PO");
 
-  let poSheet = getPoSpreadsheet(undefined, env).getSheetByName("Senior/PWD");
+  let poSheet = getPoSpreadsheet(null, env).getSheetByName("Senior/PWD");
   let storeName = sheet.getRange("A1").getValue();
   //let storeCode = getStoreCodeByName(storeName)
   let sheetName = sheet.getSheetName();
