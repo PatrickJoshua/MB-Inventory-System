@@ -7,3 +7,6 @@ dist/
 # Windows extras
 Thumbs.db
 Desktop.ini
+
+# VSCode
+.vscode

@@ -33,15 +33,19 @@ function installedOnChange(e) {
   deleteUnregisteredSheets(e);
 }
 
+// console.log(`[DEBUG] Filtered checkbox range: ${JSON.stringify(rg, null, 2)}`)
+
 function installedOnEditTrigger(e, propServ = PropertiesService, env = 'PRD') {
   let rg = e.range;
-  // console.log(`[DEBUG] Acquired range from event: ${JSON.stringify(rg, null, 2)}`);
-  // // Check if more than one cell was edited to determine the right strategy.
-  // if (rg.getNumRows() > 1 || rg.getNumColumns() > 1) {
-  //   // For multi-cell edits, search the entire range for the first checkbox.
-  //   rg = findFirstCheckboxInRange(rg);
-  // }
-  // console.log(`[DEBUG] Filtered checkbox range: ${JSON.stringify(rg, null, 2)}`);
+
+  // Priority Check: Use env from PropertiesService if available
+  const savedEnv = propServ.getScriptProperties().getProperty("env");
+  if (savedEnv) {
+    console.log(`[INFO] Environment override: Using "${savedEnv}" from PropertiesService (Argument was "${env}")`);
+    env = savedEnv;
+  } else {
+    console.log(`[INFO] Using environment: "${env}" (No override found in PropertiesService)`);
+  }
 
   const endRow = parseInt(propServ.getScriptProperties().getProperty("endRow")) || getEndRow();
   const spreadsheet = e.source;

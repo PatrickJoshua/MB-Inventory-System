@@ -44,7 +44,16 @@ function scheduledGenerateReport(e) {
     generateReport('', 'M', "3361", 1);
 }
 
-function installedOnEdit(e) {
+function installedOnEditTrigger(e, propServ = PropertiesService, env = 'PRD') {
+    // Priority Check: Use env from PropertiesService if available
+    const savedEnv = propServ.getScriptProperties().getProperty("env");
+    if (savedEnv) {
+        console.log(`[INFO] Environment override: Using "${savedEnv}" from PropertiesService (Argument was "${env}")`);
+        env = savedEnv;
+    } else {
+        console.log(`[INFO] Using environment: "${env}" (No override found in PropertiesService)`);
+    }
+
     const rg = e.range;
     // TODO: CHECK FIRST IF rg,isChecked()
     const spreadsheet = SpreadsheetApp.getActive();
@@ -54,27 +63,27 @@ function installedOnEdit(e) {
         if (rg.getA1Notation() == "U32" && rg.isChecked()) {
             rg.uncheck();
             spreadsheet.getRange('U34').clear();
-            nextPO();
+            nextPO(Utils.getStoreCodeByName(spreadsheet.getRange("B6").getValue()), env);
             //Utils.triggerFuncWithProcessingText("U34", function() {nextPO()}, spreadsheet)
         } else if (rg.getA1Notation() == "U36" && rg.isChecked()) {
             rg.uncheck();
-            Utils.triggerFuncWithProcessingText("U36", function () { pullLatestEnding(spreadsheet.getRange('B6').getValue()); }, spreadsheet);
+            Utils.triggerFuncWithProcessingText("U36", function () { pullLatestEnding(spreadsheet.getRange('B6').getValue(), undefined, true, env) }, spreadsheet);
         } else if (rg.getA1Notation() == "U59" && rg.isChecked()) {
             rg.uncheck();
-            sendPO();
+            sendPO(env);
         } else if (rg.getA1Notation() == "U75" && rg.isChecked()) {
             rg.uncheck();
-            confirmPO();
+            confirmPO(env);
         } else if ((spreadsheet.getSheetName() == "Report" || spreadsheet.getSheetName() == "Report - PCGH") && rg.getA1Notation() == getGenerateReportCol() + "5" && rg.isChecked()) {  // Generate report
             rg.uncheck();
             try {
                 var storeCode = spreadsheet.getRange(getGenerateReportCol() + '1').getValue();
                 if (spreadsheet.getRange(getGenerateReportCol() + '4').getValue() == 'Order') {
                     spreadsheet.getRange(getGenerateReportCol() + '7').setFontColor("green").setFontStyle("italic").setFontWeight("bold").setValue("Generating order report...");
-                    generateReport('', 'F', storeCode);
+                    generateReport('', 'F', storeCode, 0, env);
                 } else if (spreadsheet.getRange(getGenerateReportCol() + '4').getValue() == 'Sales') {
                     spreadsheet.getRange(getGenerateReportCol() + '7').setFontColor("green").setFontStyle("italic").setFontWeight("bold").setValue("Generating sales report...");
-                    generateReport('', 'M', storeCode);
+                    generateReport('', 'M', storeCode, 0, env);
                 } else {
                     spreadsheet.getRange(getGenerateReportCol() + '7').setFontColor("red").setFontStyle("italic").setFontWeight("bold").setValue("Please select report type");
                     Utilities.sleep(3000);
@@ -86,7 +95,7 @@ function installedOnEdit(e) {
         } else if (rg.getA1Notation() == "O77" && rg.isChecked()) {
             rg.uncheck();
             spreadsheet.getRange('P77').setValue('');
-            addPoToCashFlow(spreadsheet.getRange("B6").getValue());
+            addPoToCashFlow(spreadsheet.getRange("B6").getValue(), env);
         } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "Q1" && rg.isChecked()) {
             rg.uncheck();
             computeTotalCashCollected(spreadsheet);
@@ -98,13 +107,12 @@ function installedOnEdit(e) {
             appendToCashReceived(spreadsheet.getRange("R3").getValue(), "R3", spreadsheet);
         } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S4" && rg.isChecked()) {
             rg.uncheck();
-            appendToExpenses(5, spreadsheet);
+            extractExpensesLoop(Utils.getStoreCodeByName(spreadsheet.getRange("A1").getValue()), env);
         } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "R1" && rg.isChecked()) {
             rg.uncheck();
             appendToCashCollected(spreadsheet);
         } else if (spreadsheet.getSheetName().startsWith("RF/PCGH") && rg.getA1Notation() == "A1" && rg.isChecked()) {
             rg.uncheck();
-            Utils.triggerFuncWithProcessingText("D1", function () { pattyDistribution(spreadsheet); }, spreadsheet);
         } else if (spreadsheet.getSheetName() == "InventoryReplica" && rg.getA1Notation() == "A1" && rg.isChecked()) {
             rg.uncheck();
             Utils.triggerFuncWithProcessingText("C1", function () { updateInventoryReplica(spreadsheet.getActiveSheet()); }, spreadsheet);
@@ -134,7 +142,7 @@ function installedOnEdit(e) {
     } catch (e) {
         spreadsheet.getRange('U34').setValue(e).setFontColor("red");
         console.log(e.stack);
-        Utils.alert(e, "MB PO Err");
+        Utils.alert(e, "MB PO Err", "", env);
         throw e;
     }
 }

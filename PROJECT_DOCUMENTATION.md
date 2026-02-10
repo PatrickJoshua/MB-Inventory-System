@@ -349,9 +349,11 @@ Used for:
 
 ### Code.js
 - [Code.js](Code.js)
+- This is the main file that will be run. Entry point is the `installedOnEditTrigger()` function.
 
 ### PO.js
 - [PO.js](PO.js)
+- This is another main file that will be run. Entry point is the `installedOnEditTrigger()` function.
 - Do not remove the "Utils" namespace in this file. Assume that "Utils" namespace will contain all other java script files in this project.
 
 ### Utils.js
