@@ -51,7 +51,7 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
     if (rg.isChecked()) {
       rg.uncheck();
 
-      /*if (SpreadsheetApp.getActive().getSheetName() === "Attendance") {    // Insert checkboxes on attendance sheet
+      /*if (SpreadsheetApp.getActive().getSheetName() == "Attendance") {    // Insert checkboxes on attendance sheet
         if (a1Not == "H1") {
           triggerFuncWithProcessingText(a1Not, function() {archiveAttendance(e)}, spreadsheet)
         } else {
@@ -59,7 +59,7 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
         }
         return;
 
-      } else*/ if (a1Not === getDupFuncCol() + (endRow + 43)) {
+      } else*/ if (a1Not == getDupFuncCol() + (endRow + 43)) {
         console.log("Starting new shift script");
 
         // Cleanup
@@ -99,15 +99,15 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
         spreadsheet.getRange('B' + (endRow + 45)).setValue('New tab created: "' + newSheetName + '"').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
         actualNewshift(dateObj, shiftTime, empName, propServ);
 
-      } else if (a1Not === 'A' + (endRow + 31)) {  // Get delivery
+      } else if (a1Not == 'A' + (endRow + 31)) {  // Get delivery
         console.log("Get delivery");
         getDelivery(getStoreCodeByName(sheet.getRange("A1").getValue()));
 
-      } else if (a1Not === 'A' + (endRow + 33)) {  // Hide old -2
+      } else if (a1Not == 'A' + (endRow + 33)) {  // Hide old -2
         console.log("Hide old sheets");
         hideOldSheets(false, endRow);
 
-      } else if (a1Not === 'A' + (endRow + 35)) {  // Show old
+      } else if (a1Not == 'A' + (endRow + 35)) {  // Show old
         console.log("Show old sheets");
         var cellLabel = sheet.getRange('A' + (endRow + 34));
         var numSheets = cellLabel.getValue();
@@ -117,23 +117,23 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
         cellLabel.setValue("Show old sheets:");
         showLastNSheets(numSheets);
 
-      } else if (a1Not === 'A' + (endRow + 38)) {  // Hide verified
+      } else if (a1Not == 'A' + (endRow + 38)) {  // Hide verified
         console.log("Hide unverified sheets");
         hideOldSheets(true, endRow);
 
-      } else if (a1Not === 'A' + (endRow + 40)) {  // Show unverified
+      } else if (a1Not == 'A' + (endRow + 40)) {  // Show unverified
         console.log("Show unverified sheets");
         showUnverifiedSheets();
 
-      } else if (a1Not === 'A' + (endRow + 43)) {  // Show unverified
+      } else if (a1Not == 'A' + (endRow + 43)) {  // Show unverified
         console.log("Unlock sheet");
         protectDuplicatedSheet(getMBUnprotectedRangeList(), spreadsheet);
 
-      } else if (a1Not === 'A' + (endRow + 44)) {  // Auto-formula deliver to ending
+      } else if (a1Not == 'A' + (endRow + 44)) {  // Auto-formula deliver to ending
         console.log("Auto-formula deliver to ending");
         autoFormulaEnding(spreadsheet);
 
-      } else if (a1Not === getTotalCol() + (endRow + 9)) { // Collect sales button
+      } else if (a1Not == getTotalCol() + (endRow + 9)) { // Collect sales button
         console.log("Collecting sales to PO sheet");
         let currentContent = rg.getValue();
         rg.setValue("Processing...");
@@ -172,9 +172,9 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
         SpreadsheetApp.flush();
         rg.check();
 
-      } else if (a1Not === getLossOverCol() + (endRow + 10)) { // Verify delivery
+      } else if (a1Not == getLossOverCol() + (endRow + 10)) { // Verify delivery
         verifyDelivery(rg, endRow, sheet);
-      } else if (a1Not === getLossOverCol() + (endRow + 9)) { // Force check the collect checkbox if processing timed-out
+      } else if (a1Not == getLossOverCol() + (endRow + 9)) { // Force check the collect checkbox if processing timed-out
         sheet.getRange(getTotalCol() + (endRow + 9)).check();
         sheet.getRange(getLossOverCol() + (endRow + 9)).setValue("Verified");
       } else {
@@ -187,11 +187,11 @@ function installedOnEditTrigger(e, propServ = PropertiesService) {
         SpreadsheetApp.flush();
       }
 
-    } else if (a1Not === getDupFuncCol() + (endRow + 43) && (rg.isBlank() || rg.getValue() === "" || !(rg.getValue() === false || rg.getValue() === true))) {   // Prevent checkbox from being deleted
+    } else if (a1Not == getDupFuncCol() + (endRow + 43) && (rg.isBlank() || rg.getValue() == "" || !(rg.getValue() == false || rg.getValue() == true))) {   // Prevent checkbox from being deleted
       console.log("Inserting checkboxes");
       rg.insertCheckboxes();
 
-    } else if (a1Not === getDupFuncCol() + (endRow + 41) && (rg.isBlank())) {   // Prevent dropbox from being deleted
+    } else if (a1Not == getDupFuncCol() + (endRow + 41) && (rg.isBlank())) {   // Prevent dropbox from being deleted
       console.log("Setting shift validation");
       rg.setDataValidation(SpreadsheetApp.newDataValidation()
         .setAllowInvalid(false)

@@ -51,28 +51,28 @@ function installedOnEdit(e) {
     const a1Not = rg.getA1Notation();   // TODO: FIND AND REPLACE ALL
     const sheetName = spreadsheet.getSheetName();
     try {
-        if (rg.getA1Notation() === "U32" && rg.isChecked()) {
+        if (rg.getA1Notation() == "U32" && rg.isChecked()) {
             rg.uncheck();
             spreadsheet.getRange('U34').clear();
             nextPO();
             //Utils.triggerFuncWithProcessingText("U34", function() {nextPO()}, spreadsheet)
-        } else if (rg.getA1Notation() === "U36" && rg.isChecked()) {
+        } else if (rg.getA1Notation() == "U36" && rg.isChecked()) {
             rg.uncheck();
             Utils.triggerFuncWithProcessingText("U36", function () { pullLatestEnding(spreadsheet.getRange('B6').getValue()); }, spreadsheet);
-        } else if (rg.getA1Notation() === "U59" && rg.isChecked()) {
+        } else if (rg.getA1Notation() == "U59" && rg.isChecked()) {
             rg.uncheck();
             sendPO();
-        } else if (rg.getA1Notation() === "U75" && rg.isChecked()) {
+        } else if (rg.getA1Notation() == "U75" && rg.isChecked()) {
             rg.uncheck();
             confirmPO();
-        } else if ((spreadsheet.getSheetName() === "Report" || spreadsheet.getSheetName() === "Report - PCGH") && rg.getA1Notation() === getGenerateReportCol() + "5" && rg.isChecked()) {  // Generate report
+        } else if ((spreadsheet.getSheetName() == "Report" || spreadsheet.getSheetName() == "Report - PCGH") && rg.getA1Notation() == getGenerateReportCol() + "5" && rg.isChecked()) {  // Generate report
             rg.uncheck();
             try {
                 var storeCode = spreadsheet.getRange(getGenerateReportCol() + '1').getValue();
-                if (spreadsheet.getRange(getGenerateReportCol() + '4').getValue() === 'Order') {
+                if (spreadsheet.getRange(getGenerateReportCol() + '4').getValue() == 'Order') {
                     spreadsheet.getRange(getGenerateReportCol() + '7').setFontColor("green").setFontStyle("italic").setFontWeight("bold").setValue("Generating order report...");
                     generateReport('', 'F', storeCode);
-                } else if (spreadsheet.getRange(getGenerateReportCol() + '4').getValue() === 'Sales') {
+                } else if (spreadsheet.getRange(getGenerateReportCol() + '4').getValue() == 'Sales') {
                     spreadsheet.getRange(getGenerateReportCol() + '7').setFontColor("green").setFontStyle("italic").setFontWeight("bold").setValue("Generating sales report...");
                     generateReport('', 'M', storeCode);
                 } else {
@@ -83,43 +83,43 @@ function installedOnEdit(e) {
             } catch (e) {
                 spreadsheet.getRange(getGenerateReportCol() + '7').setFontColor("red").setFontStyle("italic").setFontWeight("bold").setValue(e.stack);
             }
-        } else if (rg.getA1Notation() === "O77" && rg.isChecked()) {
+        } else if (rg.getA1Notation() == "O77" && rg.isChecked()) {
             rg.uncheck();
             spreadsheet.getRange('P77').setValue('');
             addPoToCashFlow(spreadsheet.getRange("B6").getValue());
-        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() === "Q1" && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "Q1" && rg.isChecked()) {
             rg.uncheck();
             computeTotalCashCollected(spreadsheet);
-        } else if ((rg.getA1Notation() === "R65" || rg.getA1Notation() === "V74") && rg.isChecked()) {
+        } else if ((rg.getA1Notation() == "R65" || rg.getA1Notation() == "V74") && rg.isChecked()) {
             rg.uncheck();
             Utils.incrementLeftCell(spreadsheet, rg.getA1Notation());
-        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() === "S3" && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S3" && rg.isChecked()) {
             rg.uncheck();
             appendToCashReceived(spreadsheet.getRange("R3").getValue(), "R3", spreadsheet);
-        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() === "S4" && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S4" && rg.isChecked()) {
             rg.uncheck();
             appendToExpenses(5, spreadsheet);
-        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() === "R1" && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "R1" && rg.isChecked()) {
             rg.uncheck();
             appendToCashCollected(spreadsheet);
-        } else if (spreadsheet.getSheetName().startsWith("RF/PCGH") && rg.getA1Notation() === "A1" && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName().startsWith("RF/PCGH") && rg.getA1Notation() == "A1" && rg.isChecked()) {
             rg.uncheck();
             Utils.triggerFuncWithProcessingText("D1", function () { pattyDistribution(spreadsheet); }, spreadsheet);
-        } else if (spreadsheet.getSheetName() === "InventoryReplica" && rg.getA1Notation() === "A1" && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName() == "InventoryReplica" && rg.getA1Notation() == "A1" && rg.isChecked()) {
             rg.uncheck();
             Utils.triggerFuncWithProcessingText("C1", function () { updateInventoryReplica(spreadsheet.getActiveSheet()); }, spreadsheet);
-        } else if (spreadsheet.getSheetName() === "GCash" && (rg.getA1Notation() === "C1" || rg.getA1Notation() === "I1") && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName() == "GCash" && (rg.getA1Notation() == "C1" || rg.getA1Notation() == "I1") && rg.isChecked()) {
             rg.uncheck();
             let sheet = spreadsheet.getActiveSheet();
             //let labelRg = sheet.getRange(rg.getRow(), rg.getColumn()+1)
             //Utils.triggerFuncWithProcessingText(labelRg.getA1Notation(), function() {addGcashToCashReceived(rg, sheet)}, sheet)
             Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { addGcashToCashReceived(rg, sheet); }, sheet);
-        } else if (spreadsheet.getSheetName() === "GCash" && rg.getA1Notation() === "L1" && rg.isChecked()) { // Trigger collect gcash on both stores
+        } else if (spreadsheet.getSheetName() == "GCash" && rg.getA1Notation() == "L1" && rg.isChecked()) { // Trigger collect gcash on both stores
             rg.uncheck();
             let sheet = spreadsheet.getActiveSheet();
             Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { addGcashToCashReceived(sheet.getRange("C1"), sheet); }, sheet);
             Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { addGcashToCashReceived(sheet.getRange("I1"), sheet); }, sheet);
-        } else if (spreadsheet.getSheetName() === "GCash" && (rg.getA1Notation() === "E1" || rg.getA1Notation() === "K1") && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName() == "GCash" && (rg.getA1Notation() == "E1" || rg.getA1Notation() == "K1") && rg.isChecked()) {
             rg.uncheck();
             let sheet = spreadsheet.getActiveSheet();
             //let labelRg = sheet.getRange(rg.getRow(), rg.getColumn()+1)
@@ -127,7 +127,7 @@ function installedOnEdit(e) {
         } else if (rg.isChecked() && sheetName.startsWith("*")) {
             //Utils.triggerFuncWithProcessingText(a1Not, function() { proxyAddToCashflow(e, a1Not, spreadsheet) }, spreadsheet)
             proxyAddToCashflow(e, a1Not, spreadsheet);
-        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() === "S1" && rg.isChecked()) {
+        } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S1" && rg.isChecked()) {
             rg.uncheck();
             Utils.triggerFuncWithProcessingText(a1Not, getUnverifiedSheets, spreadsheet);
         }
@@ -254,7 +254,7 @@ function generateReport(reportName, column, storeCode, rightOffset = 0) {
     if (inventorySheetsLength > sheetsToRetain + 2) {
         let today = new Date();
         let year = today.getFullYear() - 2000;
-        let isCurrentMonthJan = today.getMonth() === 0 ? true : false;
+        let isCurrentMonthJan = today.getMonth() == 0 ? true : false;
         for (i = 2; i < inventorySheetsLength - sheetsToRetain; i++) {
             const currentSheetName = inventorySheets[i].getSheetName();
             let nameArray = currentSheetName.split(" ");
@@ -334,7 +334,7 @@ function generateReport(reportName, column, storeCode, rightOffset = 0) {
         // var _column = column;
 
 
-        // if (column === "M" && sheet.getRange("K1").getValue() === "Sales") { // legacy Sales column position
+        // if (column == "M" && sheet.getRange("K1").getValue() == "Sales") { // legacy Sales column position
         //   _column = "K"
         // }
         orders = sheet.getRange(column + '2:' + column + endRow).getValues();
@@ -425,7 +425,7 @@ function computeTotalCashCollected(sheet = SpreadsheetApp.getActiveSheet()) {
     var cashLastRow = colValues.filter(String).length + 1;
     var collectLastRow = sheet.getLastRow();
     var range = sheet.getRange("O" + collectLastRow);
-    if (range.isBlank() || range.getValue() === "") {
+    if (range.isBlank() || range.getValue() == "") {
         collectLastRow = range.getNextDataCell(SpreadsheetApp.Direction.UP).getRow();
     }
 
@@ -597,8 +597,8 @@ function pattyDistribution(spreadsheet = SpreadsheetApp.getActive()) {
                 }
 
                 // Clear previous patty distribution
-                while (spreadsheet.getRange("B" + (i)).getValue() !== "Freezer Top") { console.log("Looking for Freezer Top on row " + i++); }
-                while (spreadsheet.getRange("B" + ++i).getValue() !== "Freezer Bottom") {
+                while (spreadsheet.getRange("B" + (i)).getValue() != "Freezer Top") { console.log("Looking for Freezer Top on row " + i++); }
+                while (spreadsheet.getRange("B" + ++i).getValue() != "Freezer Bottom") {
                     console.log("Clearing row " + i);
                     spreadsheet.getRange("B" + i).setValue("");
                     spreadsheet.getRange("E" + i).setValue("");
@@ -747,7 +747,7 @@ function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive()) 
     let sheet = spreadsheet.getActiveSheet();
     let endRow = Utils.getEndRow(sheet);
 
-    if (a1Not === Utils.getTotalCol() + (endRow + 9)) {
+    if (a1Not == Utils.getTotalCol() + (endRow + 9)) {
         //sheet.getRange(a1Not).setValue("Processing...")
         sheet.setName(sheet.getSheetName().substring(1));  // Remove the asterisk
 

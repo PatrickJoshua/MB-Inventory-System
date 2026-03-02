@@ -14,7 +14,7 @@ function getRowNum(lookupVal, spreadsheet = SpreadsheetApp.getActiveSpreadsheet(
   var foundFlag = false;
 
   for (i = row; i < range.length; i++) {
-    if (range[i][0] === lookupVal) {
+    if (range[i][0] == lookupVal) {
       row = i;
       foundFlag = true;
       break;
@@ -80,11 +80,11 @@ function attendance(rg) {
       spreadsheet.getRange("E" + (row + 1)).insertCheckboxes();
       spreadsheet.getRange("I" + (row + 1)).insertCheckboxes();
     }
-    if (rg.getA1Notation() === "B" + row && rg.isChecked() && spreadsheet.getRange("C" + row).isBlank()) {
+    if (rg.getA1Notation() == "B" + row && rg.isChecked() && spreadsheet.getRange("C" + row).isBlank()) {
       var dt = new Date();
       spreadsheet.getRange("C" + row).setValue(Utilities.formatDate(dt, "GMT+8", "MMM dd"));
       spreadsheet.getRange("D" + row).setValue(Utilities.formatDate(dt, "GMT+8", "HH:mm:ss"));
-    } else if (rg.getA1Notation() === "E" + row && rg.isChecked() && spreadsheet.getRange("F" + row).isBlank()) {
+    } else if (rg.getA1Notation() == "E" + row && rg.isChecked() && spreadsheet.getRange("F" + row).isBlank()) {
       var dt = new Date();
       spreadsheet.getRange("F" + row).setValue(Utilities.formatDate(dt, "GMT+8", "MMM dd"));
       spreadsheet.getRange("G" + row).setValue(Utilities.formatDate(dt, "GMT+8", "HH:mm:ss"));
@@ -118,7 +118,7 @@ function alert(err, subj = "MB RF Inv Err", extraMsg = "") {
   var smsSheet = getPoSpreadsheet("https://docs.google.com/spreadsheets/d/17yPemlid9FVMdzVDX8Eg8Tu1W-zOg_prNtQeUeEidAg/edit").getSheetByName("SMS");
   var smsLastRow = smsSheet.getLastRow();
   var range = smsSheet.getRange("A" + smsLastRow);
-  if (range.isBlank() || range.getValue() === "") {
+  if (range.isBlank() || range.getValue() == "") {
     smsLastRow = range.getNextDataCell(SpreadsheetApp.Direction.UP).getRow() + 1;
   }
   //smsSheet.getRange("A" + smsLastRow).setValue("+639763715943")
@@ -446,7 +446,7 @@ function rasterizeSheets(customRgFormulaCheck = "B2", customStartIndex = -50, cu
 function checkAndReMergeRanges(e, sheet, rangeList) {
   // Optional: You could filter by changeType, but sometimes row/column changes
   // implicitly unmerge, so checking regardless might be safer.
-  if (e.changeType !== 'FORMAT' && e.changeType !== 'OTHER') { // Example filter
+  if (e.changeType != 'FORMAT' && e.changeType != 'OTHER') { // Example filter
     return;
   }
 
@@ -509,7 +509,7 @@ function findFirstCheckboxInRange(range) {
       const rule = validations[r][c];
 
       // Check if the cell has a rule and if that rule's type is CHECKBOX.
-      if (rule != null && rule.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.CHECKBOX) {
+      if (rule != null && rule.getCriteriaType() == SpreadsheetApp.DataValidationCriteria.CHECKBOX) {
 
         // We found the first one. Return the specific cell's Range object and stop searching.
         return sheet.getRange(startRow + r, startCol + c);
