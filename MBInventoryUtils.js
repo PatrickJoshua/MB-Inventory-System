@@ -428,7 +428,7 @@ function formatGcashDateTimeColumns(e) {
   }
 }
 
-function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, storeCode, lockServ = LockService, env = 'PRD') {
+function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, storeCode, getLockServ = null, env = 'PRD') {
   let spreadsheet = SpreadsheetApp.getActive();
   let currentSheet = spreadsheet.getActiveSheet();
   let idx = currentSheet.getIndex();
@@ -465,7 +465,7 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   labelRg.setFontStyle('italic').setFontSize(6).setValue("Waiting for lock...");
   SpreadsheetApp.flush();
 
-  const lock = lockServ.getScriptLock();
+  const lock = getLockServ ? getLockServ().getScriptLock() : LockService.getScriptLock();
   const LOCK_TIMEOUT_MS = 180000; // 3 minutes
 
   let lockAcquired = false;

@@ -1,160 +1,23 @@
-function test() {
+function _test() {
   SpreadsheetApp.getActiveSheet().getRange("A2").expandGroups()
 }
 
-function manualTrigger() {
-  Utils.manualTrigger("F108")
+function _manualTrigger() {
+  MBInventorySystem.manualTrigger("F108")
 }
 
-function onOpen() {
-  Utils.registerCurrentSheets(PropertiesService);
+function _onOpen() {
+  MBInventorySystem.registerCurrentSheets(PropertiesService);
 }
 
-function removeConflictedSheets() {
-  Utils.removeConflictedSheets();
+function _removeConflictedSheets() {
+  MBInventorySystem.removeConflictedSheets();
 }
 
-function installedOnChange(e) {
-  Utils.deleteUnregisteredSheets(e, PropertiesService, LockService);
+function _installedOnChange(e) {
+  MBInventorySystem.deleteUnregisteredSheets(e, PropertiesService, LockService);
 }
 
-function installedOnEditTrigger (e) {
-  Utils.installedOnEditTrigger(e, PropertiesService)
-  /*const rg = e.range;
-  var endRow = 0//getEndRow()
-  try {
-    if (SpreadsheetApp.getActive().getSheetName() === "Attendance") {    // Insert checkboxes on attendance sheet
-      Utils.attendance(rg)
-      return;
-    } else if (SpreadsheetApp.getActive().getSheetName() === "Gcash") {    // Calculate Gcash remittance
-      if (rg.getA1Notation() === "I1" && rg.isChecked()) {
-        console.log("Calculate total Gcash remittance")
-        rg.uncheck();
-        Utils.calculateGcashRemittance("PCGH");
-      }
-      return;
-    } 
-    
-    endRow = Utils.getEndRow()
-    if(rg.getA1Notation() === Utils.getDupFuncCol() + (endRow+43) && rg.isChecked()) {
-      rg.uncheck();
-      console.log("Starting new shift script")
-      var spreadsheet = SpreadsheetApp.getActive();
-
-      // Cleanup
-      spreadsheet.getRange(Utils.getDupFuncCol() + (endRow+40) + ':' + Utils.getDupFuncCol() + (endRow+42)).setBorder(false, false, false, false, false, false, null, SpreadsheetApp.BorderStyle.SOLID)
-      spreadsheet.getRange(Utils.getDupLabelCol() + (endRow+40) + ':' + Utils.getDupLabelCol() + (endRow+44)).clear({contentsOnly: true, skipFilteredRows: true});
-
-      var dt = spreadsheet.getRange(Utils.getDupFuncCol() + (endRow+40));
-      var shft = spreadsheet.getRange(Utils.getDupFuncCol() + (endRow+41));
-      var nam = spreadsheet.getRange(Utils.getDupFuncCol() + (endRow+42));
-
-      if (dt.isBlank()) {
-        dt.setBorder(true, true, true, true,false, false, "red", SpreadsheetApp.BorderStyle.DASHED)
-        spreadsheet.getRange(Utils.getDupLabelCol() + (endRow+40)).setValue('<- Set a date').setFontColor("red").setFontWeight("bold")
-        return;
-      }
-      if (shft.isBlank()) {
-        shft.setBorder(true, true, true, true,false, false, "red", SpreadsheetApp.BorderStyle.DASHED)
-        spreadsheet.getRange(Utils.getDupLabelCol() + (endRow+41)).setValue('<- Set AM or PM').setFontColor("red").setFontWeight("bold")
-        return;
-      }
-      if (nam.isBlank()) {
-        nam.setBorder(true, true, true, true,false, false, "red", SpreadsheetApp.BorderStyle.DASHED)
-        spreadsheet.getRange(Utils.getDupLabelCol() + (endRow+42)).setValue('<- Set your name').setFontColor("red").setFontWeight("bold")
-        return;
-      }
-      
-      // Post cleanup
-      const dateObj = dt.getValue();
-      const shiftTime = shft.getValue();
-      const empName = nam.getValue();
-
-      // Set confirmation messages
-      const dtFormatted = Utilities.formatDate(dateObj, "GMT+8", "MM/dd");
-      const newSheetName = dtFormatted + ' ' + shiftTime + ' ' + empName;
-      spreadsheet.getRange(Utils.getDupFuncCol() + (endRow+40) + ':' + Utils.getDupFuncCol() + (endRow+42)).clear({contentsOnly: true, skipFilteredRows: true});
-      spreadsheet.getRange(Utils.getDupLabelCol() + (endRow+43)).setValue('OK').setFontStyle("italic").setFontWeight("bold").setFontColor("green")
-      spreadsheet.getRange('B' + (endRow+45)).setValue('New tab created: "' + newSheetName + '"').setFontStyle("italic").setFontWeight("bold").setFontColor("green")
-      //spreadsheet.getRange(Utils.getDupLabelCol() + '8').setValue('Go back and look for the new tab at the bottom').setFontStyle("italic").setFontColor("green")
-
-      Utils.actualNewshift(dateObj, shiftTime, empName, PropertiesService);
-      
-
-    } else if((rg.getA1Notation() === Utils.getFuncCol() + "6" && rg.isChecked()) && (SpreadsheetApp.getActive().getRange(Utils.getFuncCol() + '5').isChecked())) {
-      console.log("Delete sheet")
-      deleteSheet();
-    } else if(rg.getA1Notation() === Utils.getFuncCol() + "3" && rg.isChecked()) {
-      rg.uncheck();
-      console.log("New shift")
-      Newshift();
-    } else if ((rg.getA1Notation() === Utils.getFuncCol() + "8" || rg.getA1Notation() === 'A' + (endRow+31)) && rg.isChecked()) {  // Get delivery
-      rg.uncheck();
-      console.log("Get delivery")
-      Utils.getDelivery(Utils.getStoreCodeByName(SpreadsheetApp.getActive().getRange("A1").getValue()));
-    } else if ((rg.getA1Notation() === Utils.getFuncCol() + "8" || rg.getA1Notation() === 'A' + (endRow+33)) && rg.isChecked()) {  // Hide old -2
-      rg.uncheck();
-      console.log("Hide old sheets")
-      Utils.hideOldSheets(false, endRow);
-    } else if ((rg.getA1Notation() === Utils.getFuncCol() + "14" || rg.getA1Notation() === 'A' + (endRow+35)) && rg.isChecked()) {  // Show old
-      rg.uncheck();
-      console.log("Show old sheets")
-      var cellLabel = SpreadsheetApp.getActive().getRange('A' + (endRow+34))
-      var numSheets = cellLabel.getValue()
-      if (isNaN(numSheets)) {
-        numSheets = 10
-      }
-      cellLabel.setValue("Show old sheets:")
-      Utils.showLastNSheets(numSheets);
-    } else if ((rg.getA1Notation() === Utils.getFuncCol() + "10" || rg.getA1Notation() === 'A' + (endRow+38)) && rg.isChecked()) {  // Hide verified
-      rg.uncheck();
-      console.log("Hide unverified sheets")
-      Utils.hideOldSheets(true, endRow);
-    } else if ((rg.getA1Notation() === Utils.getFuncCol() + "12" || rg.getA1Notation() === 'A' + (endRow+40)) && rg.isChecked()) {  // Show unverified
-      rg.uncheck();
-      console.log("Show unverified sheets")
-      Utils.showUnverifiedSheets();
-    } else if ((rg.getA1Notation() === 'A' + (endRow+43)) && rg.isChecked()) {  // Show unverified
-      rg.uncheck();
-      console.log("Unlock sheet")
-      Utils.protectDuplicatedSheet(Utils.getMBUnprotectedRangeList(), spreadsheet);
-    } else if (rg.getA1Notation() === Utils.getDupFuncCol() + "9" && rg.isChecked()) {
-      rg.uncheck();
-      Utils.activateLastSheet();
-    } else if ((rg.getA1Notation() === Utils.getGcashButtCol() + (endRow+4) || rg.getA1Notation() === Utils.getGcashButtCol2() + (endRow+4)) && rg.isChecked()) { // Gcash update button
-      rg.uncheck();
-      console.log("Calculating Gcash")
-      Utils.calculateGcash();
-    } else if (rg.getA1Notation() === Utils.getTotalCol() + (endRow+9) && rg.isChecked()) { // Collect sales button
-      console.log("Collecting sales to PO sheet")
-      var spreadsheet = SpreadsheetApp.getActive()
-      var sheetNameArray = spreadsheet.getSheetName().split(' ')
-      var dt = sheetNameArray[0]
-      var employeeName = sheetNameArray.slice(2).join(" ")
-      var sales = spreadsheet.getRange(Utils.getTotalCol() + (endRow+3)).getValue()          // M36
-      var gcash = spreadsheet.getRange(Utils.getTotalCol() + (endRow+4)).getValue()          // M37
-      var expenses = spreadsheet.getRange(Utils.getTotalCol() + (endRow+5)).getValue()       // M38
-      var cashAdvance = spreadsheet.getRange(Utils.getTotalCol() + (endRow+10)).getValue()   // M43
-      var expectedSales = spreadsheet.getRange(Utils.getTotalCol() + (endRow+2)).getValue()  // M35
-      var overLoss = spreadsheet.getRange(Utils.getLossOverCol() + (endRow+3)).getValue()
-      var spoiled = spreadsheet.getRange(Utils.getTotalCol() + (endRow+6)).getValue()
-      var dagdagPeraSaKaha = spreadsheet.getRange(Utils.getTotalCol() + (endRow+11)).getValue()
-
-      var storeName = spreadsheet.getRange("A1").getValue()
-      Utils.addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow)
-      Utils.extractExpenses(dt, employeeName, storeCode=Utils.getStoreCodeByName(storeName), endRow, sheet=spreadsheet)
-    } else if(rg.getA1Notation() === Utils.getDupFuncCol() + (endRow+43) && (rg.isBlank() || rg.getValue() === "" || !(rg.getValue() === false || rg.getValue() === true))) {   // Prevent checkbox from being deleted
-      rg.insertCheckboxes();
-    } else if(rg.getA1Notation() === Utils.getDupFuncCol() + (endRow+41) && (rg.isBlank())) {   // Prevent dropbox from being deleted
-      rg.setDataValidation(SpreadsheetApp.newDataValidation()
-        .setAllowInvalid(false)
-        .requireValueInList(['AM', 'PM'])
-        .build());
-    }
-  } catch (e) {
-    Utils.alert(e)
-    if(!e.stack.includes("already has sheet protection") || !e.stack.includes("failed while accessing document with id")) {
-      SpreadsheetApp.getActive().getRange('B' + (endRow+45)).setValue("ERROR. PLEASE CONTACT JOSHUA. \n" + e.stack).setFontColor("red")
-    }
-  }*/
+function _installedOnEditTrigger (e) {
+  MBInventorySystem.installedOnEditTriggerInv(e, () => PropertiesService.getScriptProperties(), () => LockService.getScriptLock())
 }

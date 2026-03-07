@@ -1,12 +1,6 @@
 function test(s = SpreadsheetApp.getActiveSheet()) {
   let ss = SpreadsheetApp.getActive();
-
-  ss.getSheets().slice(-8).forEach((x) => {
-    console.log(x.getSheetName());
-  });
-  return;
-  spreadsheet.getRange("N71").setValue("TRUE");
-
+  console.log(ss.getSheetName())
 }
 
 function adhocTrigger() {
@@ -22,7 +16,7 @@ function manualTrigger(rangeStr) {
     range: SpreadsheetApp.getActiveSheet().getRange(rangeStr),
     isChecked: true,
   };
-  installedOnEditTrigger(e);
+  installedOnEditTriggerInv(e);
 }
 
 function onOpen() {
@@ -35,11 +29,20 @@ function installedOnChange(e) {
 
 // console.log(`[DEBUG] Filtered checkbox range: ${JSON.stringify(rg, null, 2)}`)
 
-function installedOnEditTrigger(e, propServ = PropertiesService, env = 'PRD') {
+function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, env = 'PRD') {
+  // Short circuit codes for optimized performance
+  // 1. Exit if the edit wasn't a single cell change (e.value is undefined for multi-cell pastes/deletes)
+  if (!e || !e.value) return;
+
+  // 2. Exit if the new value isn't "TRUE" (which is what a checked box registers as in GAS)
+  if (e.value !== "TRUE") return;
+  // End of short circuit codes
+
   let rg = e.range;
 
   // Priority Check: Use env from PropertiesService if available
-  const savedEnv = propServ.getScriptProperties().getProperty("env");
+  const propServ = getPropServ ? getPropServ() : PropertiesService.getScriptProperties();
+  const savedEnv = propServ.getProperty("env");
   if (savedEnv) {
     console.log(`[INFO] Environment override: Using "${savedEnv}" from PropertiesService (Argument was "${env}")`);
     env = savedEnv;
@@ -47,7 +50,7 @@ function installedOnEditTrigger(e, propServ = PropertiesService, env = 'PRD') {
     console.log(`[INFO] Using environment: "${env}" (No override found in PropertiesService)`);
   }
 
-  const endRow = parseInt(propServ.getScriptProperties().getProperty("endRow")) || getEndRow();
+  const endRow = parseInt(propServ.getProperty("endRow")) || getEndRow();
   const spreadsheet = e.source;
   const sheet = spreadsheet.getActiveSheet();
   const a1Not = rg.getA1Notation();
@@ -170,7 +173,7 @@ function installedOnEditTrigger(e, propServ = PropertiesService, env = 'PRD') {
         var overLoss = sheet.getRange(getLossOverCol() + (endRow + 3)).getValue();
 
         var storeName = sheet.getRange("A1").getValue();
-        addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, getStoreCodeByName(storeName), LockService, env);
+        addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, getStoreCodeByName(storeName), getLockServ, env);
 
         rg.setValue(currentContent);
         SpreadsheetApp.flush();
