@@ -31,23 +31,23 @@ const ENV = {
     DEV: {
         // ===== Inventory Spreadsheets =====
         // TODO: Replace with DEV spreadsheet URLs
-        INVENTORY_URL_RF: 'https://docs.google.com/spreadsheets/d/DEV_INVENTORY_RF_PLACEHOLDER/edit',
+        INVENTORY_URL_RF: 'https://docs.google.com/spreadsheets/d/1Q2hoJFrAvF3ts20ZCj_d1iiEEopVRwPOggJrb/edit',
         INVENTORY_URL_PCGH: 'https://docs.google.com/spreadsheets/d/DEV_INVENTORY_PCGH_PLACEHOLDER/edit',
 
         // ===== Archive Spreadsheets =====
         // TODO: Replace with DEV spreadsheet URLs
-        ARCHIVE_URL_RF: 'https://docs.google.com/spreadsheets/d/DEV_ARCHIVE_RF_PLACEHOLDER/edit',
+        ARCHIVE_URL_RF: 'https://docs.google.com/spreadsheets/d/1GYGlRNyca5v8rqGKIDV-U7dTAuRk5AKwwC9_-Xqk8ts/edit',
         ARCHIVE_URL_PCGH: 'https://docs.google.com/spreadsheets/d/DEV_ARCHIVE_PCGH_PLACEHOLDER/edit',
 
         // ===== PO & Cash Management =====
         // TODO: Replace with DEV spreadsheet URLs
-        PO_URL: 'https://docs.google.com/spreadsheets/d/DEV_PO_PLACEHOLDER/edit',
+        PO_URL: 'https://docs.google.com/spreadsheets/d/14qqh7FU6QABvDn2XZzmKE1E1BW7V2NRokczVwxTnAmA/edit',
         SMS_API_URL: 'https://docs.google.com/spreadsheets/d/DEV_SMS_API_PLACEHOLDER/edit',
         DUMP_SITE_URL: 'https://docs.google.com/spreadsheets/d/DEV_DUMP_SITE_PLACEHOLDER/edit',
 
         // ===== Contacts (same as PRD for now) =====
         ALERT_EMAIL: 'bakulinglings@gmail.com',
-        ADMIN_EMAIL: 'mbs2edith@gmail.com',
+        ADMIN_EMAIL: 'bakulinglings@gmail.com',
         ALERT_SMS: '+639151272800'
     }
 };
