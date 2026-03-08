@@ -119,6 +119,7 @@ function alert(err, subj = "MB RF Inv Err", extraMsg = "", env = 'PRD') {
     MailApp.sendEmail(config.ALERT_EMAIL, subj, err.stack + extraMsg);
   }
 
+  /*
   // Send SMS
   var smsSheet = getPoSpreadsheet(config.SMS_API_URL, env).getSheetByName("SMS");
   var smsLastRow = smsSheet.getLastRow();
@@ -131,6 +132,7 @@ function alert(err, subj = "MB RF Inv Err", extraMsg = "", env = 'PRD') {
   smsSheet.getRange("B" + smsLastRow).setValue(subj + ": " + err.toString() + extraMsg);
   smsSheet.getRange("C" + smsLastRow).insertCheckboxes();
   smsSheet.getRange("C" + smsLastRow).setValue(true);
+  */
 }
 
 function protectCompletedSheet(sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {

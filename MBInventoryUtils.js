@@ -465,7 +465,7 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   labelRg.setFontStyle('italic').setFontSize(6).setValue("Waiting for lock...");
   SpreadsheetApp.flush();
 
-  const lock = getLockServ ? getLockServ().getScriptLock() : LockService.getScriptLock();
+  const lock = getLockServ ? getLockServ() : LockService.getScriptLock();
   const LOCK_TIMEOUT_MS = 180000; // 3 minutes
 
   let lockAcquired = false;

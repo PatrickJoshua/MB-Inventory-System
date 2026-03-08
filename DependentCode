@@ -19,5 +19,5 @@ function _installedOnChange(e) {
 }
 
 function _installedOnEditTrigger (e) {
-  MBInventorySystem.installedOnEditTriggerInv(e, () => PropertiesService.getScriptProperties(), () => LockService.getScriptLock())
+  MBInventorySystem.installedOnEditTriggerInv(e, () => PropertiesService.getScriptProperties(), () => LockService.getScriptLock(), 'PRD')
 }
