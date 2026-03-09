@@ -434,13 +434,14 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   let idx = currentSheet.getIndex();
   let sheets = spreadsheet.getSheets();
   let labelRg = currentSheet.getRange(getLossOverCol() + (endRow + 9));
+  let checkboxRg = currentSheet.getRange(getTotalCol() + (endRow + 9));
   let labelOrigContent = labelRg.getDisplayValue();
 
   // ==============================
   // PHASE 1: PRE-PROCESSING (before lock)
   // ==============================
   console.log("[PRE-PROCESS] Starting pre-processing phase...");
-  labelRg.setFontStyle('italic').setFontSize(6).setValue("Pre-processing...");
+  checkboxRg.setFontStyle('italic').setFontSize(6).setValue("Pre-processing...");
   SpreadsheetApp.flush();
 
   // Get cash flow sheet reference
@@ -462,13 +463,14 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   // PHASE 2: LOCK ACQUISITION (3 min timeout)
   // ==============================
   console.log("[LOCK] Attempting to acquire script lock...");
-  labelRg.setFontStyle('italic').setFontSize(6).setValue("Waiting for lock...");
+  checkboxRg.setFontStyle('italic').setFontSize(6).setValue("Waiting for lock...");
   SpreadsheetApp.flush();
 
   const lock = getLockServ ? getLockServ() : LockService.getScriptLock();
-  const LOCK_TIMEOUT_MS = 180000; // 3 minutes
+  const LOCK_TIMEOUT_MS = 270000; // 4.5 minutes
 
   let lockAcquired = false;
+  let writeSuccess = false;
   try {
     lockAcquired = lock.tryLock(LOCK_TIMEOUT_MS);
   } catch (e) {
@@ -480,11 +482,11 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
     labelRg.setFontColor('red').setFontStyle('italic').setFontSize(6).setValue("Timed out - please retry");
     let currentRg = currentSheet.getRange(getTotalCol() + (endRow + 9));
     currentRg.setValue(false);
-    throw new Error("Timed out waiting for lock after 3 minutes. Please retry.");
+    throw new Error(`Timed out waiting for lock after ${LOCK_TIMEOUT_MS / 60000} minutes. Please retry.`);
   }
 
   console.log("[LOCK] Lock acquired successfully");
-  labelRg.setFontStyle('italic').setFontSize(6).setValue("Processing...");
+  checkboxRg.setFontStyle('italic').setFontSize(6).setValue("Processing...");
   SpreadsheetApp.flush();
 
   // ==============================
@@ -503,38 +505,48 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
     console.log("[WRITE] Writing Senior/PWD data...");
     writePreparedSeniorData(seniorData, env);
 
-    // ==============================
-    // PHASE 4: POST-WRITE (inside lock, cleanup)
-    // ==============================
-    console.log("[POST] Marking sheet as verified...");
-    currentSheet.getRange(getTotalCol() + (endRow + 9)).setValue("TRUE");
-    labelRg.setFontColor('green').setFontStyle('italic').setFontSize(8).setValue('Verified');
-
-    if (currentSheet.getIndex() != spreadsheet.getSheets().length) {
-      currentSheet.hideSheet();
-    }
-    currentSheet.getRange("A2").expandGroups();
-
-    // Mark next inventory as ready to collect
-    let sheetsLength = sheets.length;
-    if (idx != sheetsLength) {
-      let nextSheet = sheets[idx];
-      let nextSheetLabel = nextSheet.getRange(getLossOverCol() + (getEndRow() + 9));
-      let nextSheetLabelOrigVal = nextSheetLabel.getDisplayValue();
-      nextSheetLabel.setFontColor('#DDDDDD').setFontStyle('italic').setFontSize(8).setValue(nextSheetLabelOrigVal + ' Ready');
-    }
-
-    concealSalaries(true, '#ffe599', endRow, currentSheet);
-    console.log("[POST] Sales collection completed successfully");
-
+    writeSuccess = true;
   } catch (e) {
     console.error("[ERROR] Error during write phase: " + e.stack);
     labelRg.setFontColor('red').setFontStyle('italic').setFontSize(6).setValue("Error: " + e.message);
     throw e;
   } finally {
-    // Always release the lock
+    // Always release the lock immediately after write operations
     console.log("[LOCK] Releasing lock...");
     lock.releaseLock();
+  }
+
+  // ==============================
+  // PHASE 4: POST-WRITE (after lock release, cleanup)
+  // ==============================
+  if (writeSuccess) {
+    try {
+      console.log("[POST] Marking sheet as verified...");
+      currentSheet.getRange(getTotalCol() + (endRow + 9)).setValue("TRUE");
+      labelRg.setFontColor('green').setFontStyle('italic').setFontSize(8).setValue('Verified');
+
+      if (currentSheet.getIndex() != spreadsheet.getSheets().length) {
+        currentSheet.hideSheet();
+      }
+      currentSheet.getRange("A2").expandGroups();
+
+      // Mark next inventory as ready to collect
+      let sheetsLength = sheets.length;
+      if (idx != sheetsLength) {
+        let nextSheet = sheets[idx];
+        let nextSheetLabel = nextSheet.getRange(getLossOverCol() + (getEndRow() + 9));
+        let nextSheetLabelOrigVal = nextSheetLabel.getDisplayValue();
+        nextSheetLabel.setFontColor('#DDDDDD').setFontStyle('italic').setFontSize(8).setValue(nextSheetLabelOrigVal + ' Ready');
+      }
+
+      concealSalaries(true, '#ffe599', endRow, currentSheet);
+      console.log("[POST] Sales collection completed successfully");
+
+    } catch (e) {
+      console.error("[ERROR] Error during post-write phase: " + e.stack);
+      labelRg.setFontColor('red').setFontStyle('italic').setFontSize(6).setValue("Post-processing error: " + e.message);
+      throw e;
+    }
   }
 }
 
