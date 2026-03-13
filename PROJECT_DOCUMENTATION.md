@@ -122,7 +122,7 @@ The `env` parameter defaults to `'PRD'` in all functions, ensuring backward comp
 
 ### Store Inventory Spreadsheet (`Code.js`)
 
-#### `installedOnEditTrigger(e)`
+#### `installedOnEditTriggerInv(e)`
 
 The primary onEdit trigger handler for store inventory sheets. Executes different actions based on which checkbox cell is clicked:
 
@@ -349,11 +349,11 @@ Used for:
 
 ### Code.js
 - [Code.js](Code.js)
-- This is the main file that will be run. Entry point is the `installedOnEditTrigger()` function.
+- This is the main file that will be run. Entry point is the `installedOnEditTriggerInv()` function.
 
 ### PO.js
 - [PO.js](PO.js)
-- This is another main file that will be run. Entry point is the `installedOnEditTrigger()` function.
+- This is another main file that will be run. Entry point is the `installedOnEditTriggerPO()` function.
 - Do not remove the "Utils" namespace in this file. Assume that "Utils" namespace will contain all other java script files in this project.
 
 ### Utils.js
