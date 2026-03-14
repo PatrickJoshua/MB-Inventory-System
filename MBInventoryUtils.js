@@ -597,11 +597,17 @@ function prepareExpenseData(dt, employeeName, storeCode, endRow, sheet, env = 'P
   let expenses = [];
   var lastRow = getEndRow(sheet);
 
-  // Collect expense rows
-  for (let i = (lastRow + 12); i < (lastRow + 12 + 26); i++) {
-    let expenseAmt = sheet.getRange(getTotalCol() + i).getValue();
+  // Batch read expense names and amounts
+  const expStartRow = lastRow + 12;
+  const expNumRows = 26;
+  const expNameColIdx = getDupFuncCol().charCodeAt(0) - 'A'.charCodeAt(0) + 1;
+  const expAmtColIdx = getTotalCol().charCodeAt(0) - 'A'.charCodeAt(0) + 1;
+  const expRangeVals = sheet.getRange(expStartRow, expNameColIdx, expNumRows, expAmtColIdx - expNameColIdx + 1).getValues();
+
+  for (let idx = 0; idx < expNumRows; idx++) {
+    let expenseAmt = expRangeVals[idx][expAmtColIdx - expNameColIdx];
     if (!expenseAmt) continue;
-    let expenseName = sheet.getRange(getDupFuncCol() + i).getValue();
+    let expenseName = expRangeVals[idx][0];
     expenses.push([dt, employeeName, expenseName, expenseAmt]);
   }
 
@@ -786,32 +792,25 @@ function concealSalaries(move = false, fontColor = '#ffe599', endRow = getEndRow
   var expenseCol = getDupFuncCol();
   var expenseValCol = getTotalCol();
 
-  //let expenseColIdx = expenseCol.charCodeAt(0) - 'A'.charCodeAt(0) + 1;
-  //let expenseValColIdx = expenseValCol.charCodeAt(0) - 'A'.charCodeAt(0) + 1;
+  const startRow = endRow + 10;
+  const numRows = 28;
+  const expenseDataValues = sheet.getRange(expenseCol + startRow + ':' + expenseValCol + (startRow + numRows - 1)).getValues();
+  const expenseFormulas = sheet.getRange(expenseValCol + startRow + ':' + expenseValCol + (startRow + numRows - 1)).getFormulas();
+  const valColOffset = expenseValCol.charCodeAt(0) - expenseCol.charCodeAt(0);
 
-  //let expenseNames = sheet.getRange((endRow+10), expenseColIdx, (endRow+10+28), 1).getValues()[0]
-  //let expenseVals = sheet.getRange((endRow+10), expenseValCol, (endRow+10+28), 1).getValues()[0]
-  for (var i = (endRow + 10); i < (endRow + 10 + 28); i++) {
-    var expenseName = sheet.getRange(expenseCol + i).getValue();
-    //var expenseName = expenseNames[i-1]
-
-    if (expenseName.toString().toUpperCase().includes("SALARY")) {
-      var activeSalaryRg = sheet.getRange(expenseValCol + i);
-
-      if (activeSalaryRg.getValue()) { // check if expense is populated
+  for (var idx = 0; idx < numRows; idx++) {
+    var expenseName = expenseDataValues[idx][0];
+    if (expenseName && expenseName.toString().toUpperCase().includes("SALARY")) {
+      var salaryVal = expenseDataValues[idx][valColOffset];
+      if (salaryVal) { // check if expense is populated
         console.log("Concealing: " + expenseName);
+        var activeSalaryRg = sheet.getRange(expenseValCol + (startRow + idx));
         activeSalaryRg.setFontColor(fontColor);
         activeSalaryRg.offset(0, 1).setValue("<<<");
 
-        if (move && !activeSalaryRg.getFormula().startsWith("=")) {
-          //activeSalaryRg.copyTo(sheet.getRange(getPriceCol() + i))
-          sheet.getRange(getPriceCol() + i).setValue(activeSalaryRg.getValue());
-          activeSalaryRg.setFormula(getPriceCol() + i);
-
-          // if (activeSalaryRg.getFormula() != ("=" + getPriceCol() + i)) { // check first if value has already been moved/hidden
-          //   activeSalaryRg.copyTo(sheet.getRange(getPriceCol() + i))
-          //   activeSalaryRg.setFormula(getPriceCol() + i);
-          // }
+        if (move && !expenseFormulas[idx][0].startsWith("=")) {
+          sheet.getRange(getPriceCol() + (startRow + idx)).setValue(salaryVal);
+          activeSalaryRg.setFormula(getPriceCol() + (startRow + idx));
         }
       }
     }
@@ -822,44 +821,34 @@ function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getA
   var poSheet = getLastPoSheet(storeCode, env);
   var poMap = constructPoMap(poSheet);
 
-  for (var i = 2; i <= getEndRow(); i++) {
-    var item = sheet.getRange("A" + i).getValue();
-    //console.log("[DEBUG] Current item: " + i + "=" + item)
+  var endRow = getEndRow();
+  var items = sheet.getRange("A2:A" + endRow).getValues();
+  var deliveryValues = [];
+
+  for (var j = 0; j < items.length; j++) {
+    var item = items[j][0];
     var value = null;
 
     if (item == "B. Patty") {
       value = poMap.get("BCB") + poMap.get("BPB") + poMap.get("BSB");
     } else if (item == "BSB" || item == "CPB") {
+      deliveryValues.push([null]);
       continue;
     } else if (item == "C. Patty") {
       value = poMap.get("RSB") + poMap.get("RHB") + poMap.get("CPB");
     } else if (item.includes("powder")) {
-      /*if(item == "CLT powder") {
-        value = poMap.get("CLT")/5;
-      } else if (item == "FT powder") {
-        value = poMap.get("FT")/5;
-      } else {
-        value = poMap.get(item.split(" ")[0]);
-      }*/;
       var powderItem = item.split(" ")[0];
       value = poMap.get(powderItem);
-      if (["FT", "CLT"].includes(powderItem)) {
-        value = value;   // Previously value = value/5
-      }
     } else if (item == "FT") {
       value = poMap.get(item) + poMap.get("16 OZ PAPER CUP 50'S(SORDE)");
     } else if (item == "Val Bun") {
       value = ["MB", "CB", "CT"].reduce((acc, x) => acc + (poMap.get(x) * 2), poMap.get(item));
-      //value = poMap.get(item) + ((poMap.get("MB") + poMap.get("CB") + poMap.get("CT")) * 2)
     } else if (item == "Dbl Bun") {
-      //value = poMap.get(item) + poMap.get("DMB") + poMap.get("DCB") + poMap.get("DCT")
       value = ["DMB", "DCB", "DCT", item].reduce((acc, x) => acc + poMap.get(x), 0);
     } else if (item == "Brio Bun") {
       value = ["BCB", "BPB", "BSB", "RSB", "CPB", "CVG", "SBR"].reduce((acc, x) => acc + (poMap.get(x) * 2), poMap.get(item)) + (poMap.get("WFC") ?? 0) + (poMap.get("WFU") ?? 0);
-      //value = poMap.get(item) + ((poMap.get("BCB") + poMap.get("BPB") + poMap.get("BSB") + poMap.get("RSB") + poMap.get("CPB") + poMap.get("CVG") + poMap.get("SBR")) * 2) + (poMap.get("WFC") ?? 0) + (poMap.get("WFU") ?? 0)
     } else if (item == "Htdg Bun") {
       value = ["CD", "FOF", "CCC", "BHS", item].reduce((acc, x) => acc + poMap.get(x), 0);
-      //value = poMap.get(item) + poMap.get("CD") + poMap.get("FOF") + poMap.get("CCC")
     } else if (item == "Premium coleslaw (BCB)") {
       value = poMap.get("BCB") / 10;
     } else if (item == "Black pepper sauce") {
@@ -877,14 +866,15 @@ function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getA
     } else if (item == "Spicy cheese") {
       value = poMap.get("spicy") * 3;
     } else if (item == "Cheese sauce (lahat ng liquid)") {
-      //value = poMap.get("BCB")/10 + poMap.get("BSB")/10 + poMap.get("CCC")/20 + poMap.get("CB")/10 + poMap.get("DCB")/10
       value = ["BCB", "BSB", "CB", "DCB"].reduce((acc, x) => acc + (poMap.get(x) / 10), (poMap.get("CCC") / 20));
     } else {
       value = poMap.get(item);
     }
 
-    sheet.getRange("C" + i).setValue(value);
+    deliveryValues.push([value]);
   }
+
+  sheet.getRange("C2:C" + endRow).setValues(deliveryValues);
 }
 
 function getPoSheets(storeCode, env = 'PRD') {
@@ -904,18 +894,25 @@ function getLastPoSheet(storeCode, env = 'PRD') {
 
 function constructPoMap(sheet) {
   var poMap = new Map();
-  for (var i = 31; i < getRowNum("SMS NUMBERS", sheet) - 1; i++) {
-    var item = sheet.getRange("A" + i).getValue();
-    var qty = sheet.getRange("I" + i).getValue();
-    var multiplier = sheet.getRange("C" + i).getValue();
-    var actualQty = qty * multiplier;
+  var startRow = 31;
+  var smsRow = getRowNum("SMS NUMBERS", sheet) - 1;
+  var numRows = smsRow - startRow;
 
-    if (poMap.has(item)) {
-      actualQty += poMap.get(item);
-      poMap.set("spicy", parseInt((poMap.get("spicy") ?? 0) + qty)); // most likely spicy burgers
+  if (numRows > 0) {
+    var poData = sheet.getRange(startRow, 1, numRows, 9).getValues(); // Cols A to I
+    for (var idx = 0; idx < numRows; idx++) {
+      var item = poData[idx][0];       // Col A
+      var qty = poData[idx][8];        // Col I (index 8)
+      var multiplier = poData[idx][2]; // Col C (index 2)
+      var actualQty = qty * multiplier;
+
+      if (poMap.has(item)) {
+        actualQty += poMap.get(item);
+        //poMap.set("spicy", parseInt((poMap.get("spicy") ?? 0) + qty)); // most likely spicy burgers
+      }
+
+      poMap.set(item, parseInt(actualQty));
     }
-
-    poMap.set(item, parseInt(actualQty));
   }
 
   console.log("Constructed map size: " + poMap.size);
@@ -957,14 +954,13 @@ function collectGcashToPo(endRow = getEndRow(), sheet = SpreadsheetApp.getActive
 
       let gcashCol = getProductsCol();
       let gcashValues = sheet.getRange(gcashCol + gcashStartRow + ":" + gcashCol + gcashEndRow).getValues();
-      //console.log("GCash values: " + gcashValues)
-      let gcashValuesFiltered = gcashValues.filter((val) => val > 0);
-      //console.log("Filtered GCash values: " + gcashValuesFiltered.length)
-      gcashValuesFiltered.forEach((gcashVal) => {
-        console.log("Appending Gcash to range: " + (poLastRow + 1) + "," + i);
-        poSheet.getRange(++poLastRow, i).setValue(sheetName);
-        poSheet.getRange(poLastRow, i + 1).setValue(gcashVal);
-      });
+      let gcashValuesFiltered = gcashValues.filter((val) => val[0] > 0);
+
+      let gcashRowsToWrite = gcashValuesFiltered.map(v => [sheetName, v[0]]);
+      if (gcashRowsToWrite.length > 0) {
+        console.log("Appending Gcash batch to range: " + (poLastRow + 1) + "," + i);
+        poSheet.getRange(poLastRow + 1, i, gcashRowsToWrite.length, 2).setValues(gcashRowsToWrite);
+      }
 
       found = true;
       break;
@@ -1022,19 +1018,13 @@ function collectSeniorToPo(endRow = getEndRow(), sheet = SpreadsheetApp.getActiv
       let seniorValues = sheet.getRange("B" + gcashStartRow + ":" + "D" + gcashEndRow).getValues();
       console.log("Senior/PWD range: " + seniorValues);
 
-      let filteredSeniorValues = seniorValues.filter((row) => row[2] != "");
-      console.log("Filtered Senior/PWD: " + filteredSeniorValues);
+      let rowsToBeWritten = seniorValues
+        .filter((row) => row[2] != "")
+        .map((row) => [sheetName, row[0], row[2]]);
 
-      let rowsToBeWritten = [];
-      filteredSeniorValues.forEach((row) => {
-        console.log("Appending to Senior/PWD: " + row[0] + " = " + row[2]);
-        // poSheet.getRange(++poLastRow, i).setValue(sheetName);
-        // poSheet.getRange(poLastRow, i+1).setValue(row[0]);
-        // poSheet.getRange(poLastRow, i+2).setValue(row[2]);
-        rowsToBeWritten.push([sheetName, row[0], row[2]]);
-      });
-      if (filteredSeniorValues.length > 0) {
-        poSheet.getRange(++poLastRow, i, filteredSeniorValues.length, 3).setValues(rowsToBeWritten);
+      if (rowsToBeWritten.length > 0) {
+        console.log("Appending Senior/PWD batch of " + rowsToBeWritten.length);
+        poSheet.getRange(poLastRow + 1, i, rowsToBeWritten.length, 3).setValues(rowsToBeWritten);
       }
 
       found = true;

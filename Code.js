@@ -94,9 +94,10 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
         }
 
         // Post cleanup
-        var dateObj = dt.getValue();
-        var shiftTime = shft.getValue();
-        var empName = nam.getValue();
+        var shiftDetails = spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).getValues();
+        var dateObj = shiftDetails[0][0];
+        var shiftTime = shiftDetails[1][0];
+        var empName = shiftDetails[2][0];
 
         // Set confirmation messages
         const dtFormatted = Utilities.formatDate(dateObj, "GMT+8", "MM/dd");

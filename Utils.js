@@ -82,14 +82,15 @@ function attendance(rg) {
       spreadsheet.getRange("E" + (row + 1)).insertCheckboxes();
       spreadsheet.getRange("I" + (row + 1)).insertCheckboxes();
     }
+    var dt = new Date();
     if (rg.getA1Notation() == "B" + row && rg.isChecked() && spreadsheet.getRange("C" + row).isBlank()) {
-      var dt = new Date();
-      spreadsheet.getRange("C" + row).setValue(Utilities.formatDate(dt, "GMT+8", "MMM dd"));
-      spreadsheet.getRange("D" + row).setValue(Utilities.formatDate(dt, "GMT+8", "HH:mm:ss"));
+      spreadsheet.getRange("C" + row + ":D" + row).setValues([
+        [Utilities.formatDate(dt, "GMT+8", "MMM dd"), Utilities.formatDate(dt, "GMT+8", "HH:mm:ss")]
+      ]);
     } else if (rg.getA1Notation() == "E" + row && rg.isChecked() && spreadsheet.getRange("F" + row).isBlank()) {
-      var dt = new Date();
-      spreadsheet.getRange("F" + row).setValue(Utilities.formatDate(dt, "GMT+8", "MMM dd"));
-      spreadsheet.getRange("G" + row).setValue(Utilities.formatDate(dt, "GMT+8", "HH:mm:ss"));
+      spreadsheet.getRange("F" + row + ":G" + row).setValues([
+        [Utilities.formatDate(dt, "GMT+8", "MMM dd"), Utilities.formatDate(dt, "GMT+8", "HH:mm:ss")]
+      ]);
     }
   }
 }
