@@ -307,14 +307,24 @@ function getPoUrl(env = 'PRD') {
   return getPoUrlByConfig(env);
 }
 
+var spreadSheetCache = {};
+
 function getPoSpreadsheet(url, env = 'PRD') {
   if (!url) {
     url = getPoUrl(env);
   }
+
+  if (spreadSheetCache[url]) {
+    console.log("Cache hit for URL: " + url);
+    return spreadSheetCache[url];
+  }
+
   while (true) {
     try {
-      return SpreadsheetApp.openByUrl(url);
-      break;
+      console.log("Loading spreadsheet: " + url);
+      let ss = SpreadsheetApp.openByUrl(url);
+      spreadSheetCache[url] = ss;
+      return ss;
     } catch (e) {
       console.error(e.stack);
       Utilities.sleep(5000);
