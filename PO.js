@@ -226,7 +226,7 @@ const PO = {
         */
 
         // Combined Cleanup writes
-        spreadsheet.getRangeList(['I31:I', 'O66:O72', 'P77', 'P82', 'U63', 'U74', 'Q65']).getRanges().forEach(rg => rg.setValue(''));
+        spreadsheet.getRangeList(['I31:I', 'O66:O72', 'P77', 'P82', 'U63', 'U74', 'Q65']).clearContent();
 
         // Hardcode previous projected sales
         const prevSheetProjSalesRg = prevSheet.getRange("G7");
@@ -531,9 +531,6 @@ const PO = {
                 rawExpenseSheet.getRange("E" + (rawCount + i)).copyTo(rawExpenseSheet.getRange("E" + (rawCount + 1 + i)));
             }
         }
-
-        SpreadsheetApp.flush();
-        Utilities.sleep(5000);
         sheet.getRange("Q5:R11").setValue("");
     },
 
@@ -606,6 +603,12 @@ const PO = {
 
     pattyDistribution: (spreadsheet = SpreadsheetApp.getActive(), env = 'PRD') => {
         console.log("Update Patty distribution");
+        var lastRow = spreadsheet.getLastRow();
+        var allData = spreadsheet.getRange("A1:E" + lastRow).getValues();
+        var colBData = allData.map(row => [row[1]]);
+        var colCData = allData.map(row => [row[2]]);
+        var colEData = allData.map(row => [row[4]]);
+        var changed = false;
 
         Utils.getStoreCodes().forEach((storeCode) => {
             console.log("Current store code: " + storeCode);
@@ -613,49 +616,43 @@ const PO = {
             var poSheet = Utils.getLastPoSheet(storeCode, env);
             var poMap = Utils.constructPoMap(poSheet);
 
-            var lastRow = spreadsheet.getLastRow();
-            var allData = spreadsheet.getRange("A1:E" + lastRow).getValues();
-            var colAData = allData.map(row => [row[0]]);
-            var colBData = allData.map(row => [row[1]]);
-            var colCData = allData.map(row => [row[2]]);
-            var colEData = allData.map(row => [row[4]]);
-
-            var changedColumnsCount = 0;
-
             for (var i = 0; i < lastRow; i++) {
-                if (colAData[i][0] == storeCode) {
+                if (allData[i][0] == storeCode) {
                     console.log("[DEBUG] Found store code at row " + (i + 1));
 
                     for (var j = i + 1; j < lastRow; j++) {
-                        var product = colAData[j][0];
+                        var product = allData[j][0];
                         if (product === "") break;
 
                         if (poMap.has(product)) {
                             colCData[j][0] = poMap.get(product);
-                            changedColumnsCount++;
+                            changed = true;
                         }
                     }
 
                     // Look for Freezer Top
                     for (var j = i + 1; j < lastRow; j++) {
-                        if (colBData[j][0] == "Freezer Top") {
+                        if (allData[j][1] == "Freezer Top") {
                             for (var k = j + 1; k < lastRow; k++) {
-                                if (colBData[k][0] == "Freezer Bottom") break;
-                                colBData[k][0] = "";
-                                colEData[k][0] = "";
+                                if (allData[k][1] == "Freezer Bottom") break;
+                                if (colBData[k][0] !== "" || colEData[k][0] !== "") {
+                                    colBData[k][0] = "";
+                                    colEData[k][0] = "";
+                                    changed = true;
+                                }
                             }
                             break;
                         }
                     }
                 }
             }
-
-            if (changedColumnsCount > 0) {
-                spreadsheet.getRange("C1:C" + lastRow).setValues(colCData);
-                spreadsheet.getRange("B1:B" + lastRow).setValues(colBData);
-                spreadsheet.getRange("E1:E" + lastRow).setValues(colEData);
-            }
         });
+
+        if (changed) {
+            spreadsheet.getRange("B1:B" + lastRow).setValues(colBData);
+            spreadsheet.getRange("C1:C" + lastRow).setValues(colCData);
+            spreadsheet.getRange("E1:E" + lastRow).setValues(colEData);
+        }
 
         // Update Inventory Replica
         PO.updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica"), env);

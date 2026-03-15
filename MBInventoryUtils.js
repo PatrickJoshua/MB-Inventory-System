@@ -176,26 +176,38 @@ function actualNewshift(dateObj, shiftTime, empName, propServ = PropertiesServic
   spreadsheet.getRange(getGrabCol() + (endRow + 7)).setValue(panukliValue);
 
   // CLEARING OPERATIONS
+  spreadsheet.getRangeList([
+    getTotalCol() + (endRow + 3), // CoH and Gcash
+    'C2:E' + endRow, // delivery and ending
+    'B3:B' + endRow, // sanity del for beg
+    'G2:I' + endRow, // Tally and FP
+    getPriceCol() + (endRow + 10) + ':' + getTotalCol() + (endRow + 37), // Expenses
+    getLastCol() + (endRow + 10) + ':' + getLastCol() + (endRow + 30), // Expenses Salary indicator
+    getLossOverCol() + (endRow + 9), // Validated button label
+    'A' + (endRow + 10) + ':' + getPullOutCol() + (endRow + 10 + 18), // gcash rows
+    getBegCol() + (endRow + 2) + ':' + getEndingCol() + (endRow + 8), // notes and endorsement
+    getBegCol() + (endRow + 1) // message alert
+  ]).clear({ contentsOnly: true, skipFilteredRows: false });
+
+  // Patty formulas restoration (batch setFormulas)
+  let pattyFormulas = [];
+  for (let r = bsbRow; r <= cpbRow; r++) {
+    let rowFormulas = [];
+    if (r === bsbRow) {
+      rowFormulas = ['C', 'D', 'E'].map(x => `=${x}${bsbRow - 3}-(${x}${bsbRow - 2}+${x}${bsbRow - 1})`);
+    } else if (r === cpbRow) {
+      rowFormulas = ['C', 'D', 'E'].map(x => `=${x}${cpbRow - 3}-(${x}${cpbRow - 2}+${x}${cpbRow - 1})`);
+    } else {
+      rowFormulas = ["", "", ""]; // Blanks for cells between BSB and CPB
+    }
+    pattyFormulas.push(rowFormulas);
+  }
+  spreadsheet.getRange(`C${bsbRow}:E${cpbRow}`).setFormulas(pattyFormulas);
+
   spreadsheet.getRange(getTotalCol() + (endRow + 8)).setFormula("=0");  // add panukli
-  spreadsheet.getRange(getTotalCol() + (endRow + 3) + ':' + getTotalCol() + (endRow + 3)).clear({ contentsOnly: true, skipFilteredRows: true }); // CoH and Gcash
-  spreadsheet.getRange('C2:E' + endRow).clear({ contentsOnly: true, skipFilteredRows: true });                // delivery and ending
-  spreadsheet.getRange('B3:B' + endRow).clear({ contentsOnly: true, skipFilteredRows: false });                // sanity del for beg
-  // Patty formulas
-  (['C', 'D', 'E']).forEach(function (x, i) {
-    spreadsheet.getRange(x + bsbRow).setFormula(x + (bsbRow - 3) + '-(' + x + (bsbRow - 2) + "+" + x + (bsbRow - 1) + ')');
-    spreadsheet.getRange(x + cpbRow).setFormula(x + (cpbRow - 3) + '-(' + x + (cpbRow - 2) + "+" + x + (cpbRow - 1) + ')');
-  });
-  spreadsheet.getRange('G2:I' + endRow).clear({ contentsOnly: true, skipFilteredRows: true });                                              // Tally and FP
-  spreadsheet.getRange(getPriceCol() + (endRow + 10) + ':' + getTotalCol() + (endRow + 37)).clear({ contentsOnly: true, skipFilteredRows: true }); // Expenses
-  spreadsheet.getRange(getLastCol() + (endRow + 10) + ':' + getLastCol() + (endRow + 30)).clear({ contentsOnly: true, skipFilteredRows: true }); // Expenses Salary indicator
   spreadsheet.getRange(getTotalCol() + (endRow + 9)).uncheck();                                                                                        // Collect button
   spreadsheet.getRange(getGcashButtCol() + (endRow + 4)).uncheck();                                                                                    // Gcash button
-  spreadsheet.getRange(getLossOverCol() + (endRow + 9)).clear({ contentsOnly: true, skipFilteredRows: true });    // Validated button label
-  //spreadsheet.getRange(getTotalCol() + (endRow+8)).clear({contentsOnly: true, skipFilteredRows: true});    // Add panukli
-  spreadsheet.getRange("A" + (endRow + 10) + ":" + getPullOutCol() + (endRow + 10 + 18)).clear({ contentsOnly: true, skipFilteredRows: false });    // gcash rows
-  spreadsheet.getRange(getBegCol() + (endRow + 1)).setValue(""); // message alert
   spreadsheet.getRange(getLossOverCol() + (endRow + 10)).setValue(false); // add panukli
-  spreadsheet.getRange(getBegCol() + (endRow + 2) + ":" + getEndingCol() + (endRow + 8)).clear({ contentsOnly: true, skipFilteredRows: true }); // notes and endorsement
 
   // Message alerts
   var dayOfWeek = dateObj.getDay();
@@ -435,6 +447,7 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   let sheets = spreadsheet.getSheets();
   let labelRg = currentSheet.getRange(getLossOverCol() + (endRow + 9));
   let checkboxRg = currentSheet.getRange(getTotalCol() + (endRow + 9));
+  let statusRg = currentSheet.getRange(getTotalCol() + (endRow + 9) + ":" + getLossOverCol() + (endRow + 9));
   let labelOrigContent = labelRg.getDisplayValue();
 
   // ==============================
@@ -442,10 +455,7 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   // ==============================
   console.log("[PRE-PROCESS] Starting pre-processing phase...");
   checkboxRg.setFontStyle('italic').setFontSize(6).setValue("Pre-processing...");
-  SpreadsheetApp.flush();
-
-  // Get cash flow sheet reference
-  let cashFlowSheet = getCashFlowSheet(storeName, env);
+  //SpreadsheetApp.flush();
 
   // Prepare cash flow row data
   let cashFlowRowData = prepareCashFlowRowData(dt, sales, cashAdvance, gcash, expenses, expectedSales, spoiled, overLoss, employeeName, dagdagPeraSaKaha);
@@ -459,12 +469,15 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   let seniorData = prepareSeniorData(endRow, currentSheet, env);
   console.log("[PRE-PROCESS] Senior/PWD data prepared: " + seniorData.rowsToWrite.length + " entries");
 
+  // Pre-load the cash flow sheet reference
+  let cashFlowSheet = getCashFlowSheet(storeName, env);
+
   // ==============================
   // PHASE 2: LOCK ACQUISITION (3 min timeout)
   // ==============================
   console.log("[LOCK] Attempting to acquire script lock...");
   checkboxRg.setFontStyle('italic').setFontSize(6).setValue("Waiting for lock...");
-  SpreadsheetApp.flush();
+  //SpreadsheetApp.flush();
 
   const lock = getLockServ ? getLockServ() : LockService.getScriptLock();
   const LOCK_TIMEOUT_MS = 270000; // 4.5 minutes
@@ -478,16 +491,18 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   }
 
   if (!lockAcquired) {
+    const timeoutTime = Utilities.formatDate(new Date(), "GMT+8", "HH:mm:ss");
     console.error("[LOCK] Failed to acquire lock within timeout");
-    labelRg.setFontColor('red').setFontStyle('italic').setFontSize(6).setValue("Timed out - please retry");
-    let currentRg = currentSheet.getRange(getTotalCol() + (endRow + 9));
-    currentRg.setValue(false);
-    throw new Error(`Timed out waiting for lock after ${LOCK_TIMEOUT_MS / 60000} minutes. Please retry.`);
+    statusRg.setValues([[false, `Timed out at ${timeoutTime} - please retry`]])
+      .setFontColors([['red', 'red']])
+      .setFontStyles([['normal', 'italic']])
+      .setFontSizes([[12, 6]]);
+    throw new Error(`Timed out waiting for lock after ${LOCK_TIMEOUT_MS / 60000} minutes at ${timeoutTime}. Please retry.`);
   }
 
   console.log("[LOCK] Lock acquired successfully");
   checkboxRg.setFontStyle('italic').setFontSize(6).setValue("Processing...");
-  SpreadsheetApp.flush();
+  //SpreadsheetApp.flush();
 
   // ==============================
   // PHASE 3: WRITE OPERATIONS (inside lock)
@@ -508,7 +523,10 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
     writeSuccess = true;
   } catch (e) {
     console.error("[ERROR] Error during write phase: " + e.stack);
-    labelRg.setFontColor('red').setFontStyle('italic').setFontSize(6).setValue("Error: " + e.message);
+    statusRg.setValues([[false, "Error: " + e.message]])
+      .setFontColors([['black', 'red']])
+      .setFontStyles([['normal', 'italic']])
+      .setFontSizes([[12, 6]]);
     throw e;
   } finally {
     // Always release the lock immediately after write operations
@@ -522,8 +540,10 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
   if (writeSuccess) {
     try {
       console.log("[POST] Marking sheet as verified...");
-      currentSheet.getRange(getTotalCol() + (endRow + 9)).setValue("TRUE");
-      labelRg.setFontColor('green').setFontStyle('italic').setFontSize(8).setValue('Verified');
+      statusRg.setValues([["TRUE", 'Verified']])
+        .setFontColors([['black', 'green']])
+        .setFontStyles([['normal', 'italic']])
+        .setFontSizes([[12, 8]]);
 
       if (currentSheet.getIndex() != spreadsheet.getSheets().length) {
         currentSheet.hideSheet();
@@ -544,7 +564,10 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
 
     } catch (e) {
       console.error("[ERROR] Error during post-write phase: " + e.stack);
-      labelRg.setFontColor('red').setFontStyle('italic').setFontSize(6).setValue("Post-processing error: " + e.message);
+      statusRg.setValues([[false, "Post-processing error: " + e.message]])
+        .setFontColors([['black', 'red']])
+        .setFontStyles([['normal', 'italic']])
+        .setFontSizes([[12, 6]]);
       throw e;
     }
   }
@@ -576,9 +599,14 @@ function prepareCashFlowRowData(dt, sales, cashAdvance, gcash, expenses, expecte
 /**
  * Writes the prepared cash flow row data to the sheet.
  */
-function writeCashFlowRow(cashFlowSheet, cashFlowRowData) {
-  var colValues = cashFlowSheet.getRange("H:H").getValues();
-  var count = colValues.filter(String).length + 1;
+function writeCashFlowRow(cashFlowSheet, cashFlowRowData, guaranteedAppend = false) {
+  let count;
+  if (guaranteedAppend) {
+    var colValues = cashFlowSheet.getRange("H:H").getValues();
+    count = colValues.filter(String).length + 1;
+  } else {
+    count = cashFlowSheet.getLastRow();
+  }
 
   cashFlowSheet.getRange(count + 1, 7, 1, 8).setValues(cashFlowRowData.rowValues);
   cashFlowSheet.getRange(count + 1, 8).setFormula(cashFlowRowData.salesFormula);
@@ -628,14 +656,18 @@ function prepareExpenseData(dt, employeeName, storeCode, endRow, sheet, env = 'P
 /**
  * Writes prepared expense data to the Raw Expenses sheet.
  */
-function writePreparedExpenses(expenseData, env = 'PRD') {
+function writePreparedExpenses(expenseData, env = 'PRD', guaranteedAppend = false) {
   if (expenseData.expenses.length == 0) {
     console.log("[WRITE] No expenses to write");
     return;
   }
 
   var expenseSheetPO = getPoSpreadsheet(null, env).getSheetByName(expenseData.expenseSheetName);
-  var expenseSheetPOLastRow = expenseSheetPO.getRange("A:A").getValues().filter(String).length;
+  if (guaranteedAppend) {
+    var expenseSheetPOLastRow = expenseSheetPO.getRange("A:A").getValues().filter(String).length;
+  } else {
+    var expenseSheetPOLastRow = expenseSheetPO.getLastRow();
+  }
 
   // Batch write all expenses
   expenseSheetPO.getRange(expenseSheetPOLastRow + 1, 1, expenseData.expenses.length, 4).setValues(expenseData.expenses);
@@ -651,7 +683,6 @@ function writePreparedExpenses(expenseData, env = 'PRD') {
  * @return {Object} Contains storeName, sheetName, columnIndex, and rowsToWrite array
  */
 function prepareSeniorData(endRow, sheet, env = 'PRD') {
-  let poSheet = getPoSpreadsheet(null, env).getSheetByName("Senior/PWD");
   let storeName = sheet.getRange("A1").getValue();
   let sheetName = sheet.getSheetName();
 
@@ -666,26 +697,9 @@ function prepareSeniorData(endRow, sheet, env = 'PRD') {
     rowsToWrite.push([sheetName, row[0], row[2]]);
   });
 
-  // Find the target column for this store
-  let lastColumnIndex = poSheet.getLastColumn();
-  let headerValues = poSheet.getRange(1, 1, 1, lastColumnIndex).getValues()[0];
-  let targetColumnIndex = -1;
-
-  for (let i = 0; i < lastColumnIndex; i++) {
-    if (headerValues[i] == storeName) {
-      targetColumnIndex = i + 1; // 1-based index
-      break;
-    }
-  }
-
-  if (targetColumnIndex == -1) {
-    throw new Error("Unable to find store code '" + storeName + "' while preparing Senior/PWD data");
-  }
-
   return {
     storeName: storeName,
     sheetName: sheetName,
-    targetColumnIndex: targetColumnIndex,
     rowsToWrite: rowsToWrite
   };
 }
@@ -693,7 +707,7 @@ function prepareSeniorData(endRow, sheet, env = 'PRD') {
 /**
  * Writes prepared Senior/PWD data to the Senior/PWD sheet.
  */
-function writePreparedSeniorData(seniorData, env = 'PRD') {
+function writePreparedSeniorData(seniorData, env = 'PRD', legacyImplementation = false) {
   if (seniorData.rowsToWrite.length == 0) {
     console.log("[WRITE] No Senior/PWD data to write");
     return;
@@ -701,12 +715,47 @@ function writePreparedSeniorData(seniorData, env = 'PRD') {
 
   let poSheet = getPoSpreadsheet(null, env).getSheetByName("Senior/PWD");
 
-  // Detect last row for this store's column
-  let columnLetter = String.fromCharCode(seniorData.targetColumnIndex + 65 + 1);  // 3rd col (offset by 2)
-  let poLastRow = poSheet.getRange(`${columnLetter}:${columnLetter}`).getValues().filter(String).length;
+  // Find the target column for this store
+  let lastColumnIndex = poSheet.getLastColumn();
+  let headerValues = poSheet.getRange(1, 1, 1, lastColumnIndex).getValues()[0];
+  let targetColumnIndex = -1;
+
+  for (let i = 0; i < lastColumnIndex; i++) {
+    if (headerValues[i] == seniorData.storeName) {
+      targetColumnIndex = i + 1; // 1-based index
+      break;
+    }
+  }
+
+  if (targetColumnIndex == -1) {
+    throw new Error("Unable to find store code '" + seniorData.storeName + "' while writing Senior/PWD data");
+  }
+
+  let poLastRow;
+  if (legacyImplementation) {
+    // Detect last row for this store's column
+    let columnLetter = String.fromCharCode(targetColumnIndex + 65 + 1);  // 3rd col (offset by 2)
+    poLastRow = poSheet.getRange(`${columnLetter}:${columnLetter}`).getValues().filter(String).length;
+  } else {
+    // Detect last row for this store's column using a safe search from the bottom of the sheet
+    let searchColumn = targetColumnIndex + 2;
+
+    /* // Ensure the sheet has enough columns to avoid "Invalid argument"
+    if (searchColumn > poSheet.getMaxColumns()) {
+      poSheet.insertColumnsAfter(poSheet.getMaxColumns(), searchColumn - poSheet.getMaxColumns());
+    } */
+
+    poLastRow = poSheet.getRange(poSheet.getMaxRows(), searchColumn)
+      .getNextDataCell(SpreadsheetApp.Direction.UP).getRow();
+
+    // If the search returned row 1 and row 1 is actually empty, then the column is truly empty
+    if (poLastRow === 1 && poSheet.getRange(1, searchColumn).isBlank()) {
+      poLastRow = 0;
+    }
+  }
 
   // Batch write all Senior/PWD entries
-  poSheet.getRange(poLastRow + 1, seniorData.targetColumnIndex, seniorData.rowsToWrite.length, 3).setValues(seniorData.rowsToWrite);
+  poSheet.getRange(poLastRow + 1, targetColumnIndex, seniorData.rowsToWrite.length, 3).setValues(seniorData.rowsToWrite);
 }
 
 function cashCollectedAppender(storeName, dt, sales, cashAdvance, gcash, expenses, expectedSales, spoiled, overLoss, employeeName, dagdagPeraSaKaha) {
@@ -714,34 +763,8 @@ function cashCollectedAppender(storeName, dt, sales, cashAdvance, gcash, expense
 }
 
 function cashCollectedAppenderWithSheetObj(cashFlowSheet, dt, sales, cashAdvance, gcash, expenses, expectedSales, spoiled, overLoss, employeeName, dagdagPeraSaKaha) {
-  // Check if remittance is blank
-  if (!sales) {
-    sales = 0;
-  }
-
-  // Append value
-  var colValues = cashFlowSheet.getRange("H:H").getValues();
-  var count = colValues.filter(String).length + 1;
-  if (cashAdvance) {
-    cashAdvance = '+' + cashAdvance;
-  }
-  if (dagdagPeraSaKaha) {
-    cashAdvance = cashAdvance + '-' + dagdagPeraSaKaha;
-  }
-  // old implem
-  /*cashFlowSheet.getRange(count+1,7).setValue(dt);
-  cashFlowSheet.getRange(count+1,8).setFormula(sales + cashAdvance);
-  cashFlowSheet.getRange(count+1,9).setValue(gcash);
-  cashFlowSheet.getRange(count+1,10).setValue(expenses);
-  cashFlowSheet.getRange(count+1,11).setValue(expectedSales);
-  cashFlowSheet.getRange(count+1,12).setValue(spoiled);
-  cashFlowSheet.getRange(count+1,13).setValue(overLoss);
-  cashFlowSheet.getRange(count+1,14).setValue(employeeName);*/;
-
-  // new implem
-  let rowToBeWritten = [[dt, sales + cashAdvance, gcash, expenses, expectedSales, spoiled, overLoss, employeeName]];
-  cashFlowSheet.getRange(count + 1, 7, 1, 8).setValues(rowToBeWritten);
-  cashFlowSheet.getRange(count + 1, 8).setFormula(sales + cashAdvance);
+  let cashFlowRowData = prepareCashFlowRowData(dt, sales, cashAdvance, gcash, expenses, expectedSales, spoiled, overLoss, employeeName, dagdagPeraSaKaha);
+  writeCashFlowRow(cashFlowSheet, cashFlowRowData);
 }
 
 function addGcashToReceived(storeName, amount) {
@@ -765,12 +788,26 @@ function extractExpenses(dt, employeeName, storeCode = "3252", endRow = getEndRo
   console.log("Extracted expense sheet: " + sheet.getSheetName());
   var lastRow = getEndRow(sheet);
 
-  for (var i = (lastRow + 12); i < (lastRow + 12 + 26); i++) {
-    expenseSheetPOLastRow = addExpenseToRaw(sheet, expenseSheetPO, expenseSheetPOLastRow, dt, employeeName, undefined, undefined, i);
+  var expenseNames = sheet.getRange(getDupFuncCol() + (lastRow + 12) + ":" + getDupFuncCol() + (lastRow + 12 + 25)).getValues();
+  var expenseAmts = sheet.getRange(getTotalCol() + (lastRow + 12) + ":" + getTotalCol() + (lastRow + 12 + 25)).getValues();
+  var seniorExpenseAmt = sheet.getRange((endRow + 8), (getLastColIdx() + 1)).getValue();
+
+  var expensesToAppend = [];
+  for (var i = 0; i < expenseAmts.length; i++) {
+    if (expenseAmts[i][0]) {
+      expensesToAppend.push([dt, employeeName, expenseNames[i][0], expenseAmts[i][0]]);
+    }
   }
 
-  // Senior/PWD
-  const x = addExpenseToRaw(sheet, expenseSheetPO, expenseSheetPOLastRow, dt, employeeName, sheet.getRange((endRow + 8), (getLastColIdx() + 1)).getValue(), "Senior/PWD");
+  if (seniorExpenseAmt) {
+    expensesToAppend.push([dt, employeeName, "Senior/PWD", seniorExpenseAmt]);
+  }
+
+  if (expensesToAppend.length > 0) {
+    expenseSheetPO.getRange(expenseSheetPOLastRow + 1, 1, expensesToAppend.length, 4).setValues(expensesToAppend);
+    // Copy formula for column E
+    expenseSheetPO.getRange("E" + expenseSheetPOLastRow).copyTo(expenseSheetPO.getRange(expenseSheetPOLastRow + 1, 5, expensesToAppend.length, 1));
+  }
 }
 
 function addExpenseToRaw(sheet, expenseSheetPO, expenseSheetPOLastRow, dt, employeeName, expenseAmt = "", expenseName = "", i) {
@@ -778,10 +815,6 @@ function addExpenseToRaw(sheet, expenseSheetPO, expenseSheetPOLastRow, dt, emplo
   if (!expenseAmt) return expenseSheetPOLastRow;
   if (!expenseName) expenseName = sheet.getRange(getDupFuncCol() + i).getValue();
 
-  // expenseSheetPO.getRange("A" + ++expenseSheetPOLastRow).setValue(dt)
-  // expenseSheetPO.getRange("B" + expenseSheetPOLastRow).setValue(employeeName)
-  // expenseSheetPO.getRange("C" + expenseSheetPOLastRow).setValue(expenseName)
-  // expenseSheetPO.getRange("D" + expenseSheetPOLastRow).setValue(expenseAmt)
   expenseSheetPO.getRange(++expenseSheetPOLastRow, 1, 1, 4).setValues([[dt, employeeName, expenseName, expenseAmt]]);
   expenseSheetPO.getRange("E" + (expenseSheetPOLastRow - 1)).copyTo(expenseSheetPO.getRange("E" + expenseSheetPOLastRow));
   return expenseSheetPOLastRow;
@@ -1057,7 +1090,7 @@ function archiveAttendance(e, env = 'PRD') {
   s.deleteRows(20, lastRow - 20 - 5);
 }
 
-function verifyDelivery(rg, endRow, sheet = SpreadsheetApp.getActiveSheet(), env = 'PRD') {
+function verifyDelivery(rg, endRow, sheet = SpreadsheetApp.getActiveSheet(), env = 'PRD', clearFlag = false) {
   let inventoryDeliveredValue = sheet.getRange(getLossOverCol() + (endRow + 8)).getValue();
   console.log("Inventory delivered value: " + inventoryDeliveredValue);
   let storeCode = getStoreCodeByName(sheet.getRange("A1").getValue());
@@ -1072,8 +1105,10 @@ function verifyDelivery(rg, endRow, sheet = SpreadsheetApp.getActiveSheet(), env
   if (poSheet == undefined) {
     rg.setFontSize(6).setFontStyle("italic").setFontColor("red").setValue(`${poSheetName} not found`);
     SpreadsheetApp.flush();
-    Utilities.sleep(10000);
-    rg.setValue(false);
+    if (clearFlag) {
+      Utilities.sleep(10000);
+      rg.setValue(false);
+    }
     return;
   }
   console.log("Retrieved PO sheet: " + poSheet.getSheetName());
@@ -1089,8 +1124,10 @@ function verifyDelivery(rg, endRow, sheet = SpreadsheetApp.getActiveSheet(), env
   } else {
     rg.setFontSize(6).setFontStyle("italic").setFontColor("red").setValue(`Not matched: ${expectedPoSales}`);
     SpreadsheetApp.flush();
-    Utilities.sleep(10000);
-    rg.setValue(false);
+    if (clearFlag) {
+      Utilities.sleep(10000);
+      rg.setValue(false);
+    }
   }
 }
 

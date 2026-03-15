@@ -146,7 +146,7 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
         let currentContent = rg.getValue();
         rg.setValue("Processing...");
         rg.offset(0, 1).setValue(Utilities.formatDate(new Date(), "Asia/Hong_Kong", "HH:mm:ss"));
-        SpreadsheetApp.flush();
+        //SpreadsheetApp.flush();
 
         let totalColIdx = getTotalCol().charCodeAt(0) - 'A'.charCodeAt(0) + 1;
         let totalColVals = sheet.getRange((endRow + 2), totalColIdx, 10, 1).getValues();
@@ -177,7 +177,6 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
         addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, getStoreCodeByName(storeName), getLockServ, env);
 
         rg.setValue(currentContent);
-        SpreadsheetApp.flush();
         rg.check();
 
       } else if (a1Not == getLossOverCol() + (endRow + 10)) { // Verify delivery
