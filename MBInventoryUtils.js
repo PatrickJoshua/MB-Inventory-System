@@ -807,12 +807,18 @@ function writePreparedSeniorData(seniorData, env = 'PRD', legacyImplementation =
       poSheet.insertColumnsAfter(poSheet.getMaxColumns(), searchColumn - poSheet.getMaxColumns());
     } */
 
-    poLastRow = poSheet.getRange(poSheet.getMaxRows(), searchColumn)
-      .getNextDataCell(SpreadsheetApp.Direction.UP).getRow();
+    // Robust check: if the last row of the sheet is filled, don't jump UP 
+    let maxRows = poSheet.getMaxRows();
+    let lastCell = poSheet.getRange(maxRows, searchColumn);
+    if (!lastCell.isBlank()) {
+      poLastRow = maxRows;
+    } else {
+      poLastRow = lastCell.getNextDataCell(SpreadsheetApp.Direction.UP).getRow();
 
-    // If the search returned row 1 and row 1 is actually empty, then the column is truly empty
-    if (poLastRow === 1 && poSheet.getRange(1, searchColumn).isBlank()) {
-      poLastRow = 0;
+      // If the search returned row 1 and row 1 is actually empty, then the column is truly empty
+      if (poLastRow === 1 && poSheet.getRange(1, searchColumn).isBlank()) {
+        poLastRow = 0;
+      }
     }
   }
 
