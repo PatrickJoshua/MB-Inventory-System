@@ -1,4 +1,4 @@
-function _getEndRow(spreadsheet = SpreadsheetApp.getActiveSpreadsheet(), propServ = PropertiesService) {
+function _getEndRow(spreadsheet = SpreadsheetApp.getActiveSpreadsheet(), propServ = PropertiesService) {  // TODO: Optimize this
   console.log(propServ.getScriptProperties().getProperty("endRow"));
   console.log(getRowNum("<END>", spreadsheet) - 1);
   return getRowNum("<END>", spreadsheet) - 1;
@@ -358,13 +358,19 @@ function showUnverifiedSheets() {
   var limit = 20;
   let lastUnverifiedSheet = 0;
   for (var j = sheets.length - 1; j >= 0; j--) {
-    if (sheets[j].getSheetName() == "Gcash") break;
+    let sheetName = sheets[j].getSheetName();
+    if (sheetName == "Gcash") break;
 
     let endRow = getEndRow(sheets[j]);
 
-    console.log(j + " " + sheets[j].getSheetName() + ": " + sheets[j].getRange(getTotalCol() + (endRow + 8)).getValue());
+    // Batch read M(endRow+8) and M(endRow+9) in one API call
+    let sheetVals = sheets[j].getRange(getTotalCol() + (endRow + 8) + ":" + getTotalCol() + (endRow + 9)).getValues();
+    let panukliVal = sheetVals[0][0];   // M(endRow+8)
+    let verifiedVal = sheetVals[1][0];  // M(endRow+9)
 
-    if ((sheets[j].isSheetHidden() && sheets[j].getRange(getTotalCol() + (endRow + 9)).getValue() == false)) {
+    console.log(j + " " + sheetName + ": " + panukliVal);
+
+    if ((sheets[j].isSheetHidden() && verifiedVal == false)) {
       sheets[j].showSheet();
       console.log("Collapsing A2:A" + (endRow + 1));
       sheets[j].getRange("A2:A" + (endRow + 1)).shiftRowGroupDepth(1).collapseGroups();
@@ -379,6 +385,7 @@ function showUnverifiedSheets() {
 
     if (limit <= 0) {
       sheets[lastUnverifiedSheet].getRange(getLossOverCol() + (getEndRow() + 9)).setFontColor('#DDDDDD').setFontStyle('italic').setFontSize(8).setValue('Ready');
+      SpreadsheetApp.flush();
       break;
     }
   }
@@ -550,6 +557,7 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
       }
       currentSheet.getRange("A2").expandGroups();
 
+      /* (With the recent optimization, there's no need to process in order)
       // Mark next inventory as ready to collect
       let sheetsLength = sheets.length;
       if (idx != sheetsLength) {
@@ -558,6 +566,7 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
         let nextSheetLabelOrigVal = nextSheetLabel.getDisplayValue();
         nextSheetLabel.setFontColor('#DDDDDD').setFontStyle('italic').setFontSize(8).setValue(nextSheetLabelOrigVal + ' Ready');
       }
+      */
 
       concealSalaries(true, '#ffe599', endRow, currentSheet);
       console.log("[POST] Sales collection completed successfully");
