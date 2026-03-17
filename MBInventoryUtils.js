@@ -598,14 +598,40 @@ function prepareCashFlowRowData(dt, sales, cashAdvance, gcash, expenses, expecte
 
 /**
  * Writes the prepared cash flow row data to the sheet.
+ * 
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} cashFlowSheet The sheet to write to.
+ * @param {Object} cashFlowRowData The data prepared by prepareCashFlowRowData.
+ * @param {number} [appendMode=2] Strategy for finding the last row:
+ *   - 0: Slowest guaranteed append
+ *   - 1: Guaranteed append with a few API calls (untested)
+ *   - 2: Fastest append with tendency to append extra empty rows (non-impacting)
  */
-function writeCashFlowRow(cashFlowSheet, cashFlowRowData, guaranteedAppend = false) {
+function writeCashFlowRow(cashFlowSheet, cashFlowRowData, appendMode = 2) {
   let count;
-  if (guaranteedAppend) {
-    var colValues = cashFlowSheet.getRange("H:H").getValues();
-    count = colValues.filter(String).length + 1;
-  } else {
-    count = cashFlowSheet.getLastRow();
+  switch (appendMode) {
+    case 0:
+      var colValues = cashFlowSheet.getRange("H:H").getValues();
+      count = colValues.filter(String).length + 1;
+      break;
+    case 1:
+      // Use getNextDataCell(UP) for better accuracy on specific column (H)
+      // Robust check: if the last row of the sheet is filled, don't jump UP
+      let maxRows = cashFlowSheet.getMaxRows();
+      let lastCell = cashFlowSheet.getRange(maxRows, 8);
+      if (!lastCell.isBlank()) {
+        count = maxRows;
+      } else {
+        count = lastCell.getNextDataCell(SpreadsheetApp.Direction.UP).getRow();
+        if (count === 1 && cashFlowSheet.getRange(1, 8).isBlank()) {
+          count = 0;
+        }
+      }
+      break;
+    case 2:
+      count = cashFlowSheet.getLastRow();
+      break;
+    default:
+      throw new Error("Invalid append mode: " + appendMode);
   }
 
   cashFlowSheet.getRange(count + 1, 7, 1, 8).setValues(cashFlowRowData.rowValues);
@@ -655,18 +681,45 @@ function prepareExpenseData(dt, employeeName, storeCode, endRow, sheet, env = 'P
 
 /**
  * Writes prepared expense data to the Raw Expenses sheet.
+ * 
+ * @param {Object} expenseData The data prepared by prepareExpenseData.
+ * @param {string} [env='PRD'] Environment target (PRD/UAT).
+ * @param {number} [appendMode=2] Strategy for finding the last row:
+ *   - 0: Slowest guaranteed append
+ *   - 1: Guaranteed append with a few API calls (untested)
+ *   - 2: Fastest append with tendency to append extra empty rows (non-impacting)
  */
-function writePreparedExpenses(expenseData, env = 'PRD', guaranteedAppend = false) {
+function writePreparedExpenses(expenseData, env = 'PRD', appendMode = 2) {
   if (expenseData.expenses.length == 0) {
     console.log("[WRITE] No expenses to write");
     return;
   }
 
   var expenseSheetPO = getPoSpreadsheet(null, env).getSheetByName(expenseData.expenseSheetName);
-  if (guaranteedAppend) {
-    var expenseSheetPOLastRow = expenseSheetPO.getRange("A:A").getValues().filter(String).length;
-  } else {
-    var expenseSheetPOLastRow = expenseSheetPO.getLastRow();
+  let expenseSheetPOLastRow
+  switch (appendMode) {
+    case 0:
+      expenseSheetPOLastRow = expenseSheetPO.getRange("A:A").getValues().filter(String).length;
+      break;
+    case 1:
+      // Use getNextDataCell(UP) for better accuracy on specific column (A)
+      // Robust check: if the last row of the sheet is filled, don't jump UP
+      let maxRows = expenseSheetPO.getMaxRows();
+      let lastCell = expenseSheetPO.getRange(maxRows, 1);
+      if (!lastCell.isBlank()) {
+        expenseSheetPOLastRow = maxRows;
+      } else {
+        expenseSheetPOLastRow = lastCell.getNextDataCell(SpreadsheetApp.Direction.UP).getRow();
+        if (expenseSheetPOLastRow === 1 && expenseSheetPO.getRange(1, 1).isBlank()) {
+          expenseSheetPOLastRow = 0;
+        }
+      }
+      break;
+    case 2:
+      expenseSheetPOLastRow = expenseSheetPO.getLastRow();
+      break;
+    default:
+      throw new Error("Invalid append mode: " + appendMode);
   }
 
   // Batch write all expenses
