@@ -36,7 +36,7 @@ const PO = {
     },
 
     getEndRow: (spreadsheet = SpreadsheetApp.getActiveSpreadsheet()) => {
-        return Utils.getRowNum("COLS", spreadsheet);
+        return getRowNum("COLS", spreadsheet);
         //return 41;
     },
 
@@ -45,9 +45,18 @@ const PO = {
         PO.generateReport('', 'M', "3361", 1);
     },
 
-    installedOnEditTriggerPO: (e, propServ = PropertiesService, env = 'PRD') => {
+    installedOnEditTriggerPO: (e, getPropServ = null, env = 'PRD') => {
+        // Short circuit codes for optimized performance
+        // 1. Exit if the edit wasn't a single cell change (e.value is undefined for multi-cell pastes/deletes)
+        if (!e || !e.value) return;
+
+        // 2. Exit if the new value isn't "TRUE" (which is what a checked box registers as in GAS)
+        if (e.value !== "TRUE") return;
+        // End of short circuit codes
+
         // Priority Check: Use env from PropertiesService if available
-        const savedEnv = propServ.getScriptProperties().getProperty("env");
+        const propServ = getPropServ ? getPropServ() : PropertiesService.getScriptProperties();
+        const savedEnv = propServ.getProperty("env");
         if (savedEnv) {
             console.log(`[INFO] Environment override: Using "${savedEnv}" from PropertiesService (Argument was "${env}")`);
             env = savedEnv;
@@ -64,11 +73,11 @@ const PO = {
             if (rg.getA1Notation() == "U32" && rg.isChecked()) {
                 rg.uncheck();
                 spreadsheet.getRange('U34').clear();
-                PO.nextPO(Utils.getStoreCodeByName(spreadsheet.getRange("B6").getValue()), env);
-                //Utils.triggerFuncWithProcessingText("U34", function() {PO.nextPO()}, spreadsheet)
+                PO.nextPO(getStoreCodeByName(spreadsheet.getRange("B6").getValue()), env);
+                //triggerFuncWithProcessingText("U34", function() {PO.nextPO()}, spreadsheet)
             } else if (rg.getA1Notation() == "U36" && rg.isChecked()) {
                 rg.uncheck();
-                Utils.triggerFuncWithProcessingText("U36", function () { PO.pullLatestEnding(spreadsheet.getRange('B6').getValue(), undefined, true, env) }, spreadsheet);
+                triggerFuncWithProcessingText("U36", function () { PO.pullLatestEnding(spreadsheet.getRange('B6').getValue(), undefined, true, env) }, spreadsheet);
             } else if (rg.getA1Notation() == "U59" && rg.isChecked()) {
                 rg.uncheck();
                 PO.sendPO(env);
@@ -102,13 +111,13 @@ const PO = {
                 PO.computeTotalCashCollected(spreadsheet);
             } else if ((rg.getA1Notation() == "R65" || rg.getA1Notation() == "V74") && rg.isChecked()) {
                 rg.uncheck();
-                Utils.incrementLeftCell(spreadsheet, rg.getA1Notation());
+                incrementLeftCell(spreadsheet, rg.getA1Notation());
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S3" && rg.isChecked()) {
                 rg.uncheck();
                 PO.appendToCashReceived(spreadsheet.getRange("R3").getValue(), "R3", spreadsheet);
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S4" && rg.isChecked()) {
                 rg.uncheck();
-                PO.extractExpensesLoop(Utils.getStoreCodeByName(spreadsheet.getRange("A1").getValue()), env);
+                PO.extractExpensesLoop(getStoreCodeByName(spreadsheet.getRange("A1").getValue()), env);
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "R1" && rg.isChecked()) {
                 rg.uncheck();
                 PO.appendToCashCollected(spreadsheet);
@@ -116,34 +125,34 @@ const PO = {
                 rg.uncheck();
             } else if (spreadsheet.getSheetName() == "InventoryReplica" && rg.getA1Notation() == "A1" && rg.isChecked()) {
                 rg.uncheck();
-                Utils.triggerFuncWithProcessingText("C1", function () { PO.updateInventoryReplica(spreadsheet.getActiveSheet()); }, spreadsheet);
+                triggerFuncWithProcessingText("C1", function () { PO.updateInventoryReplica(spreadsheet.getActiveSheet()); }, spreadsheet);
             } else if (spreadsheet.getSheetName() == "GCash" && (rg.getA1Notation() == "C1" || rg.getA1Notation() == "I1") && rg.isChecked()) {
                 rg.uncheck();
                 let sheet = spreadsheet.getActiveSheet();
                 //let labelRg = sheet.getRange(rg.getRow(), rg.getColumn()+1)
-                //Utils.triggerFuncWithProcessingText(labelRg.getA1Notation(), function() {PO.addGcashToCashReceived(rg, sheet)}, sheet)
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(rg, sheet); }, sheet);
+                //triggerFuncWithProcessingText(labelRg.getA1Notation(), function() {PO.addGcashToCashReceived(rg, sheet)}, sheet)
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(rg, sheet); }, sheet);
             } else if (spreadsheet.getSheetName() == "GCash" && rg.getA1Notation() == "L1" && rg.isChecked()) { // Trigger collect gcash on both stores
                 rg.uncheck();
                 let sheet = spreadsheet.getActiveSheet();
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("C1"), sheet); }, sheet);
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("I1"), sheet); }, sheet);
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("C1"), sheet); }, sheet);
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("I1"), sheet); }, sheet);
             } else if (spreadsheet.getSheetName() == "GCash" && (rg.getA1Notation() == "E1" || rg.getA1Notation() == "K1") && rg.isChecked()) {
                 rg.uncheck();
                 let sheet = spreadsheet.getActiveSheet();
                 //let labelRg = sheet.getRange(rg.getRow(), rg.getColumn()+1)
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica")); }, sheet);
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica")); }, sheet);
             } else if (rg.isChecked() && sheetName.startsWith("*")) {
-                //Utils.triggerFuncWithProcessingText(a1Not, function() { PO.proxyAddToCashflow(e, a1Not, spreadsheet) }, spreadsheet)
+                //triggerFuncWithProcessingText(a1Not, function() { PO.proxyAddToCashflow(e, a1Not, spreadsheet) }, spreadsheet)
                 PO.proxyAddToCashflow(e, a1Not, spreadsheet);
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S1" && rg.isChecked()) {
                 rg.uncheck();
-                Utils.triggerFuncWithProcessingText(a1Not, PO.getUnverifiedSheets, spreadsheet);
+                triggerFuncWithProcessingText(a1Not, PO.getUnverifiedSheets, spreadsheet);
             }
         } catch (e) {
             spreadsheet.getRange('U34').setValue(e).setFontColor("red");
             console.log(e.stack);
-            Utils.alert(e, "MB PO Err", "", env);
+            alert(e, "MB PO Err", "", env);
             throw e;
         }
     },
@@ -152,13 +161,13 @@ const PO = {
 
     pullLatestEnding: (storeCode, sheet = SpreadsheetApp.getActive().getActiveSheet(), isGenerateReport = true, env = 'PRD') => {
         console.log("Pulling latest ending for store " + storeCode);
-        var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
+        var inventorySpreadsheet = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env));
         var inventorySheets = inventorySpreadsheet.getSheets();
         var latestInvSheet = inventorySheets[inventorySheets.length - 1]
-        const endRow = Utils.getEndRow(latestInvSheet);
+        const endRow = getEndRow(latestInvSheet);
 
         var stocksCol = "D";
-        var currentStocksCell = Utils.getLastCol() + (endRow + 34);
+        var currentStocksCell = getLastCol() + (endRow + 34);
         var currentSheetStocksValue = latestInvSheet.getRange(currentStocksCell).getValue();
         console.log("Current sheet's stocks value: " + currentSheetStocksValue + " from " + currentStocksCell);
         var generateReportOffset = 0;
@@ -238,7 +247,7 @@ const PO = {
 
     generateReport: (reportName, column, storeCode, rightOffset = 0, env = 'PRD') => {
         console.log("Generating report for store " + storeCode);
-        var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
+        var inventorySpreadsheet = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env));
         var inventorySheets = inventorySpreadsheet.getSheets();
         //var inventorySheets = _inventorySheets//.slice(60)
 
@@ -266,7 +275,7 @@ const PO = {
 
         // Archive old sheets
         const sheetsToRetain = 30 //inventorySheetsLength-20 //30;
-        var archiveSpreadsheet = SpreadsheetApp.openByUrl(Utils.getArchiveInventoryUrl(storeCode, env));
+        var archiveSpreadsheet = SpreadsheetApp.openByUrl(getArchiveInventoryUrl(storeCode, env));
         if (inventorySheetsLength > sheetsToRetain + 2) {
             let today = new Date();
             let year = today.getFullYear() - 2000;
@@ -543,7 +552,7 @@ const PO = {
 
         // Batch write
         let addedVal = sheet.getRange("O" + (count + 1)).getValue();
-        sheet.getRange(receivedCount + 2, 5, 1, 2).setValues([[new Date(), "R" + (count + 1)]]);
+        sheet.getRange((receivedCount + 2), 5, 1, 2).setValues([[new Date(), "R" + (count + 1)]]);
 
         // We need to set the formula for index 6 (col F) specifically if we use setValues with string formula
         sheet.getRange("F" + (receivedCount + 2)).setFormula("R" + (count + 1));
@@ -554,7 +563,7 @@ const PO = {
     },
 
     extractExpensesLoop: (storeCode = "3361", env = 'PRD') => {
-        var inventorySpreadSheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
+        var inventorySpreadSheet = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env));
         console.log("Spreadsheet name: " + inventorySpreadSheet.getName());
         var sheets = inventorySpreadSheet.getSheets();
         var props = PropertiesService.getScriptProperties();
@@ -566,7 +575,7 @@ const PO = {
             var dt = split[0];
             var employeeName = split[2];
             //console.log("Extracting expenses on: " + inventorySheetName)
-            Utils.extractExpenses(dt, employeeName, storeCode, Utils.getEndRow(inventorySheet), inventorySheet, env);
+            extractExpenses(dt, employeeName, storeCode, getEndRow(inventorySheet), inventorySheet, env);
             //console.log("current index: " + i)
             props.setProperty("expenseIndexCounter", i);
             SpreadsheetApp.flush();
@@ -610,11 +619,11 @@ const PO = {
         var colEData = allData.map(row => [row[4]]);
         var changed = false;
 
-        Utils.getStoreCodes().forEach((storeCode) => {
+        getStoreCodes().forEach((storeCode) => {
             console.log("Current store code: " + storeCode);
 
-            var poSheet = Utils.getLastPoSheet(storeCode, env);
-            var poMap = Utils.constructPoMap(poSheet);
+            var poSheet = getLastPoSheet(storeCode, env);
+            var poMap = constructPoMap(poSheet);
 
             for (var i = 0; i < lastRow; i++) {
                 if (allData[i][0] == storeCode) {
@@ -666,12 +675,12 @@ const PO = {
         var row2Vals = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
         var updates = [];
 
-        let storeCodes = Utils.getStoreCodes();
+        let storeCodes = getStoreCodes();
 
         for (var i = 0; i < lastCol; i++) {
             let storeCode = row2Vals[i];
             if (storeCode && storeCode != "" && storeCodes.includes(String(storeCode))) {
-                let sheets = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env)).getSheets();
+                let sheets = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env)).getSheets();
                 let lastSheetName = sheets[sheets.length - 1].getSheetName();
                 updates.push({ col: i + 2, val: lastSheetName }); // i+2 because we are writing to the column *after* the store code
             }
@@ -723,11 +732,11 @@ const PO = {
         let gcashVariance = actualGcashVal - totalGcashVal;
         console.log(`GCash variance: ${gcashVariance}`);
         if (gcashVariance != 0) {
-            Utils.cashCollectedAppender(storeName, Utilities.formatDate(new Date(), "GMT+8", "MM/dd/yyyy"), 0, 0, 0, 0, 0, 0, gcashVariance, "GCash", 0);
+            cashCollectedAppender(storeName, Utilities.formatDate(new Date(), "GMT+8", "MM/dd/yyyy"), 0, 0, 0, 0, 0, 0, gcashVariance, "GCash", 0);
         }
 
         // Save actual gcash amount to cash received
-        PO.appendToCashReceived(actualGcashVal, null, Utils.getCashFlowSheet(storeName));
+        PO.appendToCashReceived(actualGcashVal, null, getCashFlowSheet(storeName));
 
         // Processing Replicas and Manuals
         let gcashWrites = new Array(maxRows).fill([""]);
@@ -787,9 +796,9 @@ const PO = {
 
     proxyAddToCashflow: (e, a1Not, spreadsheet = SpreadsheetApp.getActive(), env = 'PRD') => {
         let sheet = spreadsheet.getActiveSheet();
-        let endRow = Utils.getEndRow(sheet);
+        let endRow = getEndRow(sheet);
 
-        if (a1Not == Utils.getTotalCol() + (endRow + 9)) {
+        if (a1Not == getTotalCol() + (endRow + 9)) {
             //sheet.getRange(a1Not).setValue("Processing...")
             sheet.setName(sheet.getSheetName().substring(1));  // Remove the asterisk
 
@@ -813,3 +822,13 @@ const PO = {
     }
 
 };
+
+function getPOfunction(funcName) {
+    return PO[funcName];
+}
+
+/* Sample usage:
+function installedOnEditTrigger(e){
+  MBInventorySystem.getPOfunction("installedOnEditTriggerPO")(e, () => PropertiesService.getScriptProperties(), 'DEV')
+}
+*/
