@@ -1,3 +1,4 @@
+/*
 function test() {
     let ss = SpreadsheetApp.getActive();
     return
@@ -769,3 +770,4 @@ function proxyAddToCashflow(e, a1Not, spreadsheet = SpreadsheetApp.getActive()) 
 function autoUpdateInventoryReplica(e) {
     updateInventoryReplica(SpreadsheetApp.getActive().getSheetByName("InventoryReplica"))
 }
+*/
