@@ -819,9 +819,155 @@ const PO = {
 
     autoUpdateInventoryReplica: (e, env = 'PRD') => {
         PO.updateInventoryReplica(SpreadsheetApp.getActive().getSheetByName("InventoryReplica"), env);
+    },
+
+    /**
+     * Moves PO sheets from source to Archive PO spreadsheet.
+     * Retains the latest PO sheet per store code (3252 and 3361).
+     * Handles 6-minute limit with auto-resume triggers.
+     * 
+     * @param {string} env Environment target (PRD/DEV)
+     * @param {number} batchSize Optional limit on sheets to process in one go
+     */
+    archivePoSheets: (env = 'PRD', batchSize = null) => {
+        const startTime = new Date().getTime();
+        const limitMs = 315000; // 5 minutes 15 seconds
+        const propServ = PropertiesService.getScriptProperties();
+        const config = getConfig(env);
+
+        console.log(`[ARCHIVE] Starting PO archiving process (${env} environment)`);
+
+        const sourceSs = getPoSpreadsheet(getPoUrl(env), env);
+        const sheets = sourceSs.getSheets();
+
+        // Regex to identify PO sheets: "PO Dmm/dd/yy (storeCode)" or "PO Dmm/dd (storeCode)" or "PO Dmm/dd"
+        const poNameRegex = /^PO D\d{1,2}\/\d{1,2}(\/\d{2,4})?( (3252|3361))?$/;
+
+        // Filter and identify latest sheet per store code
+        let poSheets = [];
+        let latestPerStore = { "3252": -1, "3361": -1 };
+
+        sheets.forEach((sheet, index) => {
+            const name = sheet.getName();
+            if (poNameRegex.test(name)) {
+                poSheets.push({ sheet: sheet, name: name, index: index });
+
+                // Identify store code suffix if present
+                const storeMatch = name.match(/ (3252|3361)$/);
+                if (storeMatch) {
+                    const storeCode = storeMatch[1];
+                    // Sheet index in ss.getSheets() determines "latest" (rightmost = latest)
+                    if (index > latestPerStore[storeCode]) {
+                        latestPerStore[storeCode] = index;
+                    }
+                }
+            }
+        });
+
+        // Build list of sheets to archive (exclude the latest per store)
+        let archivableSheets = poSheets.filter(item => {
+            const storeMatch = item.name.match(/ (3252|3361)$/);
+            if (storeMatch) {
+                const storeCode = storeMatch[1];
+                return item.index !== latestPerStore[storeCode];
+            }
+            return true; // Sheets without store code are always archivable
+        });
+
+        if (archivableSheets.length === 0) {
+            console.log("[ARCHIVE] No sheets to archive.");
+            propServ.deleteProperty("archivePoProgress");
+            propServ.deleteProperty("archivePoEnv");
+            return;
+        }
+
+        // No index-based resume needed: previously archived sheets
+        // have been deleted, so archivableSheets already reflects remaining work.
+
+        const archiveSs = getPoSpreadsheet(getArchivePoUrl(env), env);
+        let processedCount = 0;
+
+        console.log(`[ARCHIVE] Archiving ${archivableSheets.length} matching sheets`);
+
+        for (let i = 0; i < archivableSheets.length; i++) {
+            // Time guard check
+            if (new Date().getTime() - startTime > limitMs) {
+                console.log(`[ARCHIVE] Approaching time limit. Saving progress at index ${i}`);
+                propServ.setProperty("archivePoProgress", "in_progress");
+                propServ.setProperty("archivePoEnv", env);
+
+                // Schedule continuation trigger
+                PO.cleanupArchiveTriggers();
+                ScriptApp.newTrigger("archivePoContinuation")
+                    .timeBased()
+                    .after(30000) // 30 seconds delay
+                    .create();
+
+                console.log("[ARCHIVE] Continuation trigger scheduled.");
+                return;
+            }
+
+            // Batch size check
+            if (batchSize && processedCount >= batchSize) {
+                console.log(`[ARCHIVE] Batch size reached (${batchSize}). Saving progress at index ${i}`);
+                propServ.setProperty("archivePoProgress", "in_progress");
+                propServ.setProperty("archivePoEnv", env);
+                return;
+            }
+
+            const item = archivableSheets[i];
+            const sheetToMove = item.sheet;
+            const sheetName = item.name;
+
+            console.log(`[ARCHIVE] Processing: ${sheetName}`);
+
+            try {
+                // Check if already exists in archive
+                let existing = archiveSs.getSheetByName(sheetName);
+                if (existing) {
+                    console.log(`[ARCHIVE] Sheet ${sheetName} already in archive. Deleting from source.`);
+                } else {
+                    sheetToMove.copyTo(archiveSs).setName(sheetName);
+                }
+                sourceSs.deleteSheet(sheetToMove);
+                processedCount++;
+            } catch (e) {
+                console.error(`[ARCHIVE] Error moving sheet ${sheetName}: ${e.message}`);
+                // In case of error, we stop and let the next run handle it
+                propServ.setProperty("archivePoProgress", "in_progress");
+                propServ.setProperty("archivePoEnv", env);
+                throw e;
+            }
+        }
+
+        console.log(`[ARCHIVE] Finished archiving ${processedCount} sheets.`);
+        propServ.deleteProperty("archivePoProgress");
+        propServ.deleteProperty("archivePoEnv");
+        PO.cleanupArchiveTriggers();
+    },
+
+    /**
+     * Deletes all archivePoContinuation triggers to prevent duplicates.
+     */
+    cleanupArchiveTriggers: () => {
+        ScriptApp.getProjectTriggers().forEach(t => {
+            if (t.getHandlerFunction() === "archivePoContinuation") {
+                ScriptApp.deleteTrigger(t);
+            }
+        });
     }
 
 };
+
+/**
+ * Global continuation function for trigger-based resumption.
+ */
+function archivePoContinuation() {
+    const propServ = PropertiesService.getScriptProperties();
+    const env = propServ.getProperty("archivePoEnv") || "PRD";
+    console.log(`[ARCHIVE] Trigger resumed for ${env} environment.`);
+    PO.archivePoSheets(env);
+}
 
 function getPOfunction(funcName) {
     return PO[funcName];

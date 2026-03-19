@@ -19,6 +19,7 @@ const ENV = {
 
         // ===== PO & Cash Management =====
         PO_URL: 'https://docs.google.com/spreadsheets/d/10IGAlAy_4LqyFgi3UNAVHBDy9hp69yJOd6oQVhL4JLk/edit',
+        ARCHIVE_PO_URL: 'https://docs.google.com/spreadsheets/d/1XcJc4mK3EQ7Ag7wV9K25fqTkX-uWhlJrpRxkLyzMJEY/edit',
         SMS_API_URL: 'https://docs.google.com/spreadsheets/d/17yPemlid9FVMdzVDX8Eg8Tu1W-zOg_prNtQeUeEidAg/edit',
         DUMP_SITE_URL: 'https://docs.google.com/spreadsheets/d/1rPiSSJlbfLDKjqofRxqh1DR1lP5VYS67SFBp99to5Iw/edit',
 
@@ -42,6 +43,7 @@ const ENV = {
         // ===== PO & Cash Management =====
         // TODO: Replace with DEV spreadsheet URLs
         PO_URL: 'https://docs.google.com/spreadsheets/d/14qqh7FU6QABvDn2XZzmKE1E1BW7V2NRokczVwxTnAmA/edit',
+        ARCHIVE_PO_URL: 'https://docs.google.com/spreadsheets/d/18yE2KgDAx3sliD9Wihq2pwW6EPm5d-Q0MXObOSm0om4/edit',
         SMS_API_URL: 'https://docs.google.com/spreadsheets/d/DEV_SMS_API_PLACEHOLDER/edit',
         DUMP_SITE_URL: 'https://docs.google.com/spreadsheets/d/DEV_DUMP_SITE_PLACEHOLDER/edit',
 
@@ -110,6 +112,15 @@ function getArchiveUrlByConfig(storeCode, env = 'PRD') {
  */
 function getPoUrlByConfig(env = 'PRD') {
     return getConfig(env).PO_URL;
+}
+
+/**
+ * Returns the Archive PO spreadsheet URL.
+ * @param {string} env - Environment name ('PRD' or 'DEV'). Defaults to 'PRD'.
+ * @returns {string} Archive PO spreadsheet URL
+ */
+function getArchivePoUrlByConfig(env = 'PRD') {
+    return getConfig(env).ARCHIVE_PO_URL;
 }
 
 /**

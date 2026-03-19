@@ -299,6 +299,10 @@ function getArchiveInventoryUrl(storeCode, env = 'PRD') {
   return getArchiveUrlByConfig(storeCode, env);
 }
 
+function getArchivePoUrl(env = 'PRD') {
+  return getArchivePoUrlByConfig(env);
+}
+
 function getPoUrl(env = 'PRD') {
   return getPoUrlByConfig(env);
 }

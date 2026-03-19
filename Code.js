@@ -1,6 +1,9 @@
 function test(s = SpreadsheetApp.getActiveSheet()) {
-  let ss = SpreadsheetApp.getActive();
-  console.log(ss.getSheetName())
+  getPOfunction("archivePoSheets")('DEV', 2)
+}
+
+function archivePoSheets() {
+  getPOfunction("archivePoSheets")()
 }
 
 function adhocTrigger() {
@@ -36,7 +39,8 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
   if (!e || !e.value) return;
 
   // 2. Exit if the new value isn't "TRUE" (which is what a checked box registers as in GAS)
-  if (e.value !== "TRUE") return;
+  // Additional condition: If the employee name is edited, allow to passthrough for checking if the new shift checkbox is ticked
+  if (e.value !== "TRUE" && !(e.range.columnEnd == 6 && e.range.rowEnd == 109)) return;
   // End of short circuit codes
 
   let rg = e.range;
@@ -58,6 +62,7 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
   try {
     if (rg.isChecked()) {
       rg.uncheck();
+      SpreadsheetApp.flush();
 
       /*if (SpreadsheetApp.getActive().getSheetName() == "Attendance") {    // Insert checkboxes on attendance sheet
         if (a1Not == "H1") {
@@ -158,6 +163,13 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
         rg.setValue(currentContent);
         SpreadsheetApp.flush();
       }
+
+    } else if (a1Not == getDupFuncCol() + (endRow + 42) && sheet.getRange(getDupFuncCol() + (endRow + 43)).isChecked()) {
+      rg.uncheck();
+      SpreadsheetApp.flush();
+
+      console.log("Starting new shift script from name change");
+      startNewShift(spreadsheet, endRow, propServ, env);
 
     } else if (a1Not == getDupFuncCol() + (endRow + 43) && (rg.isBlank() || rg.getValue() == "" || !(rg.getValue() == false || rg.getValue() == true))) {   // Prevent checkbox from being deleted
       console.log("Inserting checkboxes");
