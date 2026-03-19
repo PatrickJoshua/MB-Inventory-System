@@ -23,8 +23,9 @@ function onOpen() {
   registerCurrentSheets();
 }
 
-function installedOnChange(e) {
-  deleteUnregisteredSheets(e);
+function installedOnChange(e, getPropServ = null) {
+  const propServ = getPropServ ? getPropServ() : PropertiesService.getScriptProperties();
+  deleteUnregisteredSheets(e, propServ);
 }
 
 // console.log(`[DEBUG] Filtered checkbox range: ${JSON.stringify(rg, null, 2)}`)
@@ -50,7 +51,7 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
     console.log(`[INFO] Using environment: "${env}" (No override found in PropertiesService)`);
   }
 
-  const endRow = parseInt(propServ.getProperty("endRow")) || getEndRow();
+  const endRow = parseInt(propServ.getProperty("endRow")) || getEndRow();   // TODO: ensure this is used by all functions
   const spreadsheet = e.source;
   const sheet = spreadsheet.getActiveSheet();
   const a1Not = rg.getA1Notation();
@@ -69,43 +70,7 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
       } else*/ if (a1Not == getDupFuncCol() + (endRow + 43)) {
         console.log("Starting new shift script");
 
-        // Cleanup
-        spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).setBorder(false, false, false, false, false, false, null, SpreadsheetApp.BorderStyle.SOLID);
-        spreadsheet.getRange(getDupLabelCol() + (endRow + 40) + ':' + getDupLabelCol() + (endRow + 44)).clear({ contentsOnly: true, skipFilteredRows: true });
-
-        var dt = spreadsheet.getRange(getDupFuncCol() + (endRow + 40));
-        var shft = spreadsheet.getRange(getDupFuncCol() + (endRow + 41));
-        var nam = spreadsheet.getRange(getDupFuncCol() + (endRow + 42));
-
-        if (dt.isBlank()) {
-          dt.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
-          spreadsheet.getRange(getDupLabelCol() + (endRow + 40)).setValue('<- Set a date').setFontColor("red").setFontWeight("bold");
-          return;
-        }
-        if (shft.isBlank()) {
-          shft.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
-          spreadsheet.getRange(getDupLabelCol() + (endRow + 41)).setValue('<- Set AM or PM').setFontColor("red").setFontWeight("bold");
-          return;
-        }
-        if (nam.isBlank()) {
-          nam.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
-          spreadsheet.getRange(getDupLabelCol() + (endRow + 42)).setValue('<- Set your name').setFontColor("red").setFontWeight("bold");
-          return;
-        }
-
-        // Post cleanup
-        var shiftDetails = spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).getValues();
-        var dateObj = shiftDetails[0][0];
-        var shiftTime = shiftDetails[1][0];
-        var empName = shiftDetails[2][0];
-
-        // Set confirmation messages
-        const dtFormatted = Utilities.formatDate(dateObj, "GMT+8", "MM/dd");
-        const newSheetName = dtFormatted + ' ' + shiftTime + ' ' + empName;
-        spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).clear({ contentsOnly: true, skipFilteredRows: true });
-        spreadsheet.getRange(getDupLabelCol() + (endRow + 43)).setValue('OK').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
-        spreadsheet.getRange('B' + (endRow + 45)).setValue('New tab created: "' + newSheetName + '"').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
-        actualNewshift(dateObj, shiftTime, empName, propServ, env);
+        startNewShift(spreadsheet, endRow, propServ, env);
 
       } else if (a1Not == 'A' + (endRow + 31)) {  // Get delivery
         console.log("Get delivery");
@@ -213,4 +178,44 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
     }
     console.error(e.stack);
   }
+}
+
+function startNewShift(spreadsheet, endRow, propServ, env) {
+  // Cleanup
+  spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).setBorder(false, false, false, false, false, false, null, SpreadsheetApp.BorderStyle.SOLID);
+  spreadsheet.getRange(getDupLabelCol() + (endRow + 40) + ':' + getDupLabelCol() + (endRow + 44)).clear({ contentsOnly: true, skipFilteredRows: true });
+
+  var dt = spreadsheet.getRange(getDupFuncCol() + (endRow + 40));
+  var shft = spreadsheet.getRange(getDupFuncCol() + (endRow + 41));
+  var nam = spreadsheet.getRange(getDupFuncCol() + (endRow + 42));
+
+  if (dt.isBlank()) {
+    dt.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
+    spreadsheet.getRange(getDupLabelCol() + (endRow + 40)).setValue('<- Set a date').setFontColor("red").setFontWeight("bold");
+    return;
+  }
+  if (shft.isBlank()) {
+    shft.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
+    spreadsheet.getRange(getDupLabelCol() + (endRow + 41)).setValue('<- Set AM or PM').setFontColor("red").setFontWeight("bold");
+    return;
+  }
+  if (nam.isBlank()) {
+    nam.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
+    spreadsheet.getRange(getDupLabelCol() + (endRow + 42)).setValue('<- Set your name').setFontColor("red").setFontWeight("bold");
+    return;
+  }
+
+  // Post cleanup
+  var shiftDetails = spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).getValues();
+  var dateObj = shiftDetails[0][0];
+  var shiftTime = shiftDetails[1][0];
+  var empName = shiftDetails[2][0];
+
+  // Set confirmation messages
+  const dtFormatted = Utilities.formatDate(dateObj, "GMT+8", "MM/dd");
+  const newSheetName = dtFormatted + ' ' + shiftTime + ' ' + empName;
+  spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).clear({ contentsOnly: true, skipFilteredRows: true });
+  spreadsheet.getRange(getDupLabelCol() + (endRow + 43)).setValue('OK').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
+  spreadsheet.getRange('B' + (endRow + 45)).setValue('New tab created: "' + newSheetName + '"').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
+  actualNewshift(dateObj, shiftTime, empName, propServ, env);
 }

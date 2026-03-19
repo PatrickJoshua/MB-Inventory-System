@@ -1,7 +1,3 @@
-function utilTest(propServ) {
-  propServ.getScriptProperties().setProperty("testKey", "testVal");
-}
-
 function getRowNum(lookupVal, spreadsheet = SpreadsheetApp.getActiveSpreadsheet()) {
   if (lookupVal == null) {
     throw Error("No lookupVal passed");
@@ -175,7 +171,7 @@ function activateLastSheet() {
 }
 
 function registerCurrentSheets(propServ = PropertiesService) {
-  propServ.getScriptProperties().setProperty("sheetName", JSON.stringify(SpreadsheetApp.getActiveSpreadsheet().getSheets().map(s => s.getSheetName())));
+  propServ.setProperty("sheetName", JSON.stringify(SpreadsheetApp.getActiveSpreadsheet().getSheets().map(s => s.getSheetName())));
 }
 
 function deleteUnregisteredSheets(e, propServ = PropertiesService, lockServ = LockService, env = 'PRD') {
@@ -183,7 +179,7 @@ function deleteUnregisteredSheets(e, propServ = PropertiesService, lockServ = Lo
   if (lock.tryLock(350000)) {
     try {
       if (e.changeType != "INSERT_GRID") return;
-      const sheetNames = JSON.parse(propServ.getScriptProperties().getProperty("sheetName"));
+      const sheetNames = JSON.parse(propServ.getProperty("sheetName"));
       const dumpSite = getPoSpreadsheet(getConfig(env).DUMP_SITE_URL, env);
       e.source.getSheets().forEach(s => {
         var sheetName = s.getSheetName();

@@ -15,7 +15,7 @@ function _removeConflictedSheets() {
 }
 
 function _installedOnChange(e) {
-  MBInventorySystem.deleteUnregisteredSheets(e, PropertiesService, LockService);
+  MBInventorySystem.deleteUnregisteredSheets(e, () => PropertiesService.getScriptProperties());
 }
 
 function _installedOnEditTrigger (e) {

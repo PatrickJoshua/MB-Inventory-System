@@ -176,6 +176,7 @@ function actualNewshift(dateObj, shiftTime, empName, propServ = PropertiesServic
   spreadsheet.getRange(getGrabCol() + (endRow + 7)).setValue(panukliValue);
 
   // CLEARING OPERATIONS
+  spreadsheet.getRange(getTotalCol() + (endRow + 8)).setFormula("=0");  // add panukli
   spreadsheet.getRangeList([
     getTotalCol() + (endRow + 3), // CoH and Gcash
     'C2:E' + endRow, // delivery and ending
@@ -204,7 +205,6 @@ function actualNewshift(dateObj, shiftTime, empName, propServ = PropertiesServic
   }
   spreadsheet.getRange(`C${bsbRow}:E${cpbRow}`).setFormulas(pattyFormulas);
 
-  spreadsheet.getRange(getTotalCol() + (endRow + 8)).setFormula("=0");  // add panukli
   spreadsheet.getRange(getTotalCol() + (endRow + 9)).uncheck();                                                                                        // Collect button
   spreadsheet.getRange(getGcashButtCol() + (endRow + 4)).uncheck();                                                                                    // Gcash button
   spreadsheet.getRange(getLossOverCol() + (endRow + 10)).setValue(false); // add panukli
@@ -361,7 +361,7 @@ function showUnverifiedSheets() {
     let sheetName = sheets[j].getSheetName();
     if (sheetName == "Gcash") break;
 
-    let endRow = getEndRow(sheets[j]);
+    let endRow = getEndRow(sheets[j]);  // TODO: Can be optimized to use the getEndRow from script properties
 
     // Batch read M(endRow+8) and M(endRow+9) in one API call
     let sheetVals = sheets[j].getRange(getTotalCol() + (endRow + 8) + ":" + getTotalCol() + (endRow + 9)).getValues();
