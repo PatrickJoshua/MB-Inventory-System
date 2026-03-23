@@ -361,8 +361,8 @@ function hideAllExceptRightmost(spreadsheet = SpreadsheetApp.getActive(), showLa
   var sheets = spreadsheet.getSheets();
 
   // Step 1: Hide all sheets except the right-most (at least one must remain visible)
-  // Loop from right to left (decrementing), starting from index length-2
-  for (var i = sheets.length - 2; i >= 0; i--) {
+  // Loop from left to right (incrementing), covering all but the last sheet
+  for (var i = 0; i < sheets.length - 1; i++) {
     if (!sheets[i].isSheetHidden()) {
       sheets[i].hideSheet();
     }
@@ -371,8 +371,8 @@ function hideAllExceptRightmost(spreadsheet = SpreadsheetApp.getActive(), showLa
   // Step 2: If flag is true, re-show the last 3 sheets
   if (showLastThree) {
     var start = Math.max(0, sheets.length - 3);
-    // Loop from right to left (decrementing)
-    for (var j = sheets.length - 1; j >= start; j--) {
+    // Loop from left to right (incrementing)
+    for (var j = start; j < sheets.length; j++) {
       if (sheets[j].isSheetHidden()) {
         sheets[j].showSheet();
       }
