@@ -165,7 +165,7 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
       }
 
     } else if (a1Not == getDupFuncCol() + (endRow + 42) && sheet.getRange(getDupFuncCol() + (endRow + 43)).isChecked()) {
-      rg.uncheck();
+      sheet.getRange(getDupFuncCol() + (endRow + 43)).uncheck();
       SpreadsheetApp.flush();
 
       console.log("Starting new shift script from name change");
