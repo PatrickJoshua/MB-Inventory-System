@@ -294,7 +294,8 @@ function actualNewshift(dateObj, shiftTime, empName, propServ = PropertiesServic
   fillNextShiftDetails(dateObj, shiftTime, spreadsheet, endRow);
   collectGcashToPo(endRow, prevSheet, env);
   spreadsheet.getRange(getPullOutCol() + (endRow + 2)).setValue(spreadsheet.getSheetName());
-  hideOldSheets();
+  //hideOldSheets();
+  hideAllExceptRightmost(spreadsheet, true);
 
   // set Ready label if new sheet is next to verified
   //if (prevSheet.getRange())
@@ -348,6 +349,33 @@ function hideOldSheets(unverifiedOnly = false, endRow = getEndRow()) {
       console.log("Hiding sheet: " + sheets[j].getSheetName());
       concealSalaries(true, '#ffe599', endRow, sheets[j]);
       sheets[j].hideSheet();
+    }
+  }
+}
+
+/**
+ * Hides all sheets except for the right-most sheet.
+ * @param {boolean} [showLastThree=false] If true, re-shows the last 3 sheets from the right instead of just the right-most.
+ */
+function hideAllExceptRightmost(spreadsheet = SpreadsheetApp.getActive(), showLastThree = false) {
+  var sheets = spreadsheet.getSheets();
+
+  // Step 1: Hide all sheets except the right-most (at least one must remain visible)
+  // Loop from right to left (decrementing), starting from index length-2
+  for (var i = sheets.length - 2; i >= 0; i--) {
+    if (!sheets[i].isSheetHidden()) {
+      sheets[i].hideSheet();
+    }
+  }
+
+  // Step 2: If flag is true, re-show the last 3 sheets
+  if (showLastThree) {
+    var start = Math.max(0, sheets.length - 3);
+    // Loop from right to left (decrementing)
+    for (var j = sheets.length - 1; j >= start; j--) {
+      if (sheets[j].isSheetHidden()) {
+        sheets[j].showSheet();
+      }
     }
   }
 }
