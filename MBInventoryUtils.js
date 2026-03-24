@@ -971,6 +971,7 @@ function concealSalaries(move = false, fontColor = '#ffe599', endRow = getEndRow
 function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
   var poSheet = getLastPoSheet(storeCode, env);
   var poMap = constructPoMap(poSheet);
+  const getVal = (key) => Number(poMap.get(key)) || 0;
 
   var endRow = getEndRow();
   var items = sheet.getRange("A2:A" + endRow).getValues();
@@ -989,45 +990,49 @@ function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getA
     }
 
     if (item == "B. Patty") {
-      value = poMap.get("BCB") + poMap.get("BPB") + poMap.get("BSB");
+      value = getVal("BCB") + getVal("BPB") + getVal("BSB");
     } else if (item == "BSB" || item == "CPB") {
       deliveryValues.push([null]);
       continue;
     } else if (item == "C. Patty") {
-      value = poMap.get("RSB") + poMap.get("RHB") + poMap.get("CPB");
+      value = getVal("RSB") + getVal("RHB") + getVal("CPB");
     } else if (item.includes("powder")) {
       var powderItem = item.split(" ")[0];
-      value = poMap.get(powderItem);
+      value = getVal(powderItem);
     } else if (item == "FT") {
-      value = poMap.get(item) + poMap.get("16 OZ PAPER CUP 50'S(SORDE)");
+      value = getVal(item) + getVal("16 OZ PAPER CUP 50'S(SORDE)");
     } else if (item == "Val Bun") {
-      value = ["MB", "CB", "CT"].reduce((acc, x) => acc + (poMap.get(x) * 2), poMap.get(item));
+      value = ["MB", "CB", "CT"].reduce((acc, x) => acc + (getVal(x) * 2), getVal(item));
     } else if (item == "Dbl Bun") {
-      value = ["DMB", "DCB", "DCT", item].reduce((acc, x) => acc + poMap.get(x), 0);
+      value = ["DMB", "DCB", "DCT", item].reduce((acc, x) => acc + getVal(x), 0);
     } else if (item == "Brio Bun") {
-      value = ["BCB", "BPB", "BSB", "RSB", "CPB", "CVG", "SBR"].reduce((acc, x) => acc + (poMap.get(x) * 2), poMap.get(item)) + (poMap.get("WFC") ?? 0) + (poMap.get("WFU") ?? 0);
+      value = ["BCB", "BPB", "BSB", "RSB", "CPB", "CVG", "SBR"].reduce((acc, x) => acc + (getVal(x) * 2), getVal(item)) + getVal("WFC") + getVal("WFU");
     } else if (item == "Htdg Bun") {
-      value = ["CD", "FOF", "CCC", "BHS", item].reduce((acc, x) => acc + poMap.get(x), 0);
+      value = ["CD", "FOF", "CCC", "BHS", item].reduce((acc, x) => acc + getVal(x), 0);
     } else if (item == "Premium coleslaw (BCB)") {
-      value = poMap.get("BCB") / 10;
+      value = getVal("BCB") / 10;
     } else if (item == "Black pepper sauce") {
-      value = poMap.get("BPB") / 10;
+      value = getVal("BPB") / 10;
     } else if (item == "Shawarma sauce") {
-      value = poMap.get("BSB") / 10;
+      value = getVal("BSB") / 10;
     } else if (item == "Veggie sauce") {
-      value = poMap.get("CVG") / 10;
+      value = getVal("CVG") / 10;
     } else if (item == "Veggie cabbage") {
-      value = poMap.get("CVG") / 10;
+      value = getVal("CVG") / 10;
     } else if (item == "Steak sauce") {
-      value = poMap.get("SBR") / 10;
+      value = getVal("SBR") / 10;
     } else if (item == "Steak cheese") {
-      value = poMap.get("SBR") * 2;
+      value = getVal("SBR") * 2;
     } else if (item == "Spicy cheese") {
-      value = poMap.get("spicy") * 3;
+      value = getVal("spicy") * 3;
     } else if (item == "Cheese sauce (lahat ng liquid)") {
-      value = ["BCB", "BSB", "CB", "DCB"].reduce((acc, x) => acc + (poMap.get(x) / 10), (poMap.get("CCC") / 20));
+      value = ["BCB", "BSB", "CB", "DCB"].reduce((acc, x) => acc + (getVal(x) / 10), (getVal("CCC") / 20));
     } else {
-      value = poMap.get(item);
+      value = getVal(item);
+    }
+
+    if (value === null || isNaN(value)) {
+      value = 0;
     }
 
     deliveryValues.push([value]);
