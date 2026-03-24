@@ -385,20 +385,31 @@ function showUnverifiedSheets() {
   var sheets = SpreadsheetApp.getActive().getSheets();
   var limit = 20;
   let lastUnverifiedSheet = 0;
+
+  // Optimized to use getEndRow from script properties globally so we save an API call per sheet
+  let propEndRowStr = PropertiesService.getScriptProperties().getProperty("endRow");
+  let endRow = propEndRowStr ? parseInt(propEndRowStr) : getEndRow(sheets[sheets.length - 1]);
+
   for (var j = sheets.length - 1; j >= 0; j--) {
     let sheetName = sheets[j].getSheetName();
     if (sheetName == "Gcash") break;
 
-    let endRow = getEndRow(sheets[j]);  // TODO: Can be optimized to use the getEndRow from script properties
+    let isHidden = sheets[j].isSheetHidden();
+    let verifiedVal = true;
+    let panukliVal = "";
 
-    // Batch read M(endRow+8) and M(endRow+9) in one API call
-    let sheetVals = sheets[j].getRange(getTotalCol() + (endRow + 8) + ":" + getTotalCol() + (endRow + 9)).getValues();
-    let panukliVal = sheetVals[0][0];   // M(endRow+8)
-    let verifiedVal = sheetVals[1][0];  // M(endRow+9)
+    // Optimization: Defer Batch read M(endRow+8) and M(endRow+9) unless the sheet is hidden
+    // This saves a .getValues API hit per visible sheet
+    if (isHidden) {
+      let sheetVals = sheets[j].getRange(getTotalCol() + (endRow + 8) + ":" + getTotalCol() + (endRow + 9)).getValues();
+      panukliVal = sheetVals[0][0];   // M(endRow+8)
+      verifiedVal = sheetVals[1][0];  // M(endRow+9)
+      console.log(j + " " + sheetName + ": " + panukliVal);
+    } else {
+      console.log(j + " " + sheetName + ": Check deferred (not hidden)");
+    }
 
-    console.log(j + " " + sheetName + ": " + panukliVal);
-
-    if ((sheets[j].isSheetHidden() && verifiedVal == false)) {
+    if (isHidden && verifiedVal == false) {
       sheets[j].showSheet();
       console.log("Collapsing A2:A" + (endRow + 1));
       sheets[j].getRange("A2:A" + (endRow + 1)).shiftRowGroupDepth(1).collapseGroups();
@@ -412,7 +423,9 @@ function showUnverifiedSheets() {
     }
 
     if (limit <= 0) {
-      sheets[lastUnverifiedSheet].getRange(getLossOverCol() + (getEndRow() + 9)).setFontColor('#DDDDDD').setFontStyle('italic').setFontSize(8).setValue('Ready');
+      if (lastUnverifiedSheet > 0) {
+        sheets[lastUnverifiedSheet].getRange(getLossOverCol() + (endRow + 9)).setFontColor('#DDDDDD').setFontStyle('italic').setFontSize(8).setValue('Ready');
+      }
       SpreadsheetApp.flush();
       break;
     }
@@ -927,23 +940,32 @@ function concealSalaries(move = false, fontColor = '#ffe599', endRow = getEndRow
   const expenseFormulas = sheet.getRange(expenseValCol + startRow + ':' + expenseValCol + (startRow + numRows - 1)).getFormulas();
   const valColOffset = expenseValCol.charCodeAt(0) - expenseCol.charCodeAt(0);
 
+  let colorRanges = [];
+  let indicatorRanges = [];
+
   for (var idx = 0; idx < numRows; idx++) {
     var expenseName = expenseDataValues[idx][0];
     if (expenseName && expenseName.toString().toUpperCase().includes("SALARY")) {
       var salaryVal = expenseDataValues[idx][valColOffset];
       if (salaryVal) { // check if expense is populated
         console.log("Concealing: " + expenseName);
-        var activeSalaryRg = sheet.getRange(expenseValCol + (startRow + idx));
-        activeSalaryRg.setFontColor(fontColor);
-        activeSalaryRg.offset(0, 1).setValue("<<<");
+        var activeSalaryRgStr = expenseValCol + (startRow + idx);
+        colorRanges.push(activeSalaryRgStr);
+        indicatorRanges.push(getLastCol() + (startRow + idx)); // Offset(0, 1) from getTotalCol() ("M") is getLastCol() ("N")
 
-        if (move && !expenseFormulas[idx][0].startsWith("=")) {
+        if (move && !expenseFormulas[idx][0].toString().startsWith("=")) {
+          // Preserve the original move logic
+          var activeSalaryRg = sheet.getRange(activeSalaryRgStr);
           sheet.getRange(getPriceCol() + (startRow + idx)).setValue(salaryVal);
-          activeSalaryRg.setFormula(getPriceCol() + (startRow + idx));
+          activeSalaryRg.setFormula("=" + getPriceCol() + (startRow + idx));
         }
       }
     }
   }
+
+  // Batch execute all styling and value changes per sheet
+  if (colorRanges.length > 0) sheet.getRangeList(colorRanges).setFontColor(fontColor);
+  if (indicatorRanges.length > 0) sheet.getRangeList(indicatorRanges).setValue("<<<");
 }
 
 function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') {
@@ -952,11 +974,19 @@ function getDelivery(storeCode = "3252", sheet = SpreadsheetApp.getActive().getA
 
   var endRow = getEndRow();
   var items = sheet.getRange("A2:A" + endRow).getValues();
+  var currentFormulas = sheet.getRange("C2:C" + endRow).getFormulas();
+  var currentValues = sheet.getRange("C2:C" + endRow).getValues();
   var deliveryValues = [];
 
   for (var j = 0; j < items.length; j++) {
     var item = items[j][0];
     var value = null;
+
+    // Do not set value on C17 and C21 because they have formulas
+    if (j === 15 || j === 19) {
+      deliveryValues.push([currentFormulas[j][0] || currentValues[j][0]]);
+      continue;
+    }
 
     if (item == "B. Patty") {
       value = poMap.get("BCB") + poMap.get("BPB") + poMap.get("BSB");
