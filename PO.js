@@ -292,6 +292,15 @@ const PO = {
                 let newSheetName = nameArray.join(" ");
 
                 console.log("Archiving sheet: " + newSheetName);
+
+                // Safeguard: Remove any existing no-year duplicate (e.g., "04/15 PM John")
+                // before archiving the year-bearing version ("04/15/26 PM John")
+                let noYearSheet = archiveSpreadsheet.getSheetByName(currentSheetName);
+                if (noYearSheet) {
+                    console.log(`[DEDUP] Removing no-year duplicate "${currentSheetName}" in favor of "${newSheetName}"`);
+                    archiveSpreadsheet.deleteSheet(noYearSheet);
+                }
+
                 // Pre-check if existing
                 let existingSheet = archiveSpreadsheet.getSheetByName(newSheetName);
                 if (existingSheet) {
@@ -313,6 +322,29 @@ const PO = {
                 }
 
                 inventorySpreadsheet.deleteSheet(inventorySheets[i]);
+            }
+
+            // Final dedup sweep: find any remaining no-year sheets that conflict with year-bearing sheets
+            // This catches historical duplicates and edge cases from prior runs
+            let archiveSheetsList = archiveSpreadsheet.getSheets();
+            let archiveSheetNames = new Set(archiveSheetsList.map(s => s.getSheetName()));
+            const dateWithYearRegex = /^(\d{1,2}\/\d{1,2})\/(\d{2})\s/;  // matches "MM/dd/yy .*"
+
+            for (let s of archiveSheetsList) {
+                let name = s.getSheetName();
+                // Check if this is a no-year sheet (MM/dd <space>...) that has a year-bearing counterpart
+                if (/^\d{1,2}\/\d{1,2}\s/.test(name) && !dateWithYearRegex.test(name)) {
+                    // Build what the year-bearing name would look like for current and previous year
+                    let nameParts = name.split(" ");
+                    let possibleWithYear = nameParts[0] + "/" + year + " " + nameParts.slice(1).join(" ");
+                    let possibleWithPrevYear = nameParts[0] + "/" + (year - 1) + " " + nameParts.slice(1).join(" ");
+
+                    if (archiveSheetNames.has(possibleWithYear) || archiveSheetNames.has(possibleWithPrevYear)) {
+                        let keptName = archiveSheetNames.has(possibleWithYear) ? possibleWithYear : possibleWithPrevYear;
+                        console.log(`[DEDUP-SWEEP] Deleting no-year sheet "${name}" — year-bearing "${keptName}" exists`);
+                        archiveSpreadsheet.deleteSheet(s);
+                    }
+                }
             }
         }
 
