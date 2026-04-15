@@ -1,7 +1,3 @@
-function utilTest(propServ) {
-  propServ.getScriptProperties().setProperty("testKey", "testVal");
-}
-
 function getRowNum(lookupVal, spreadsheet = SpreadsheetApp.getActiveSpreadsheet()) {
   if (lookupVal == null) {
     throw Error("No lookupVal passed");
@@ -82,14 +78,15 @@ function attendance(rg) {
       spreadsheet.getRange("E" + (row + 1)).insertCheckboxes();
       spreadsheet.getRange("I" + (row + 1)).insertCheckboxes();
     }
+    var dt = new Date();
     if (rg.getA1Notation() == "B" + row && rg.isChecked() && spreadsheet.getRange("C" + row).isBlank()) {
-      var dt = new Date();
-      spreadsheet.getRange("C" + row).setValue(Utilities.formatDate(dt, "GMT+8", "MMM dd"));
-      spreadsheet.getRange("D" + row).setValue(Utilities.formatDate(dt, "GMT+8", "HH:mm:ss"));
+      spreadsheet.getRange("C" + row + ":D" + row).setValues([
+        [Utilities.formatDate(dt, "GMT+8", "MMM dd"), Utilities.formatDate(dt, "GMT+8", "HH:mm:ss")]
+      ]);
     } else if (rg.getA1Notation() == "E" + row && rg.isChecked() && spreadsheet.getRange("F" + row).isBlank()) {
-      var dt = new Date();
-      spreadsheet.getRange("F" + row).setValue(Utilities.formatDate(dt, "GMT+8", "MMM dd"));
-      spreadsheet.getRange("G" + row).setValue(Utilities.formatDate(dt, "GMT+8", "HH:mm:ss"));
+      spreadsheet.getRange("F" + row + ":G" + row).setValues([
+        [Utilities.formatDate(dt, "GMT+8", "MMM dd"), Utilities.formatDate(dt, "GMT+8", "HH:mm:ss")]
+      ]);
     }
   }
 }
@@ -174,7 +171,7 @@ function activateLastSheet() {
 }
 
 function registerCurrentSheets(propServ = PropertiesService) {
-  propServ.getScriptProperties().setProperty("sheetName", JSON.stringify(SpreadsheetApp.getActiveSpreadsheet().getSheets().map(s => s.getSheetName())));
+  propServ.setProperty("sheetName", JSON.stringify(SpreadsheetApp.getActiveSpreadsheet().getSheets().map(s => s.getSheetName())));
 }
 
 function deleteUnregisteredSheets(e, propServ = PropertiesService, lockServ = LockService, env = 'PRD') {
@@ -182,7 +179,7 @@ function deleteUnregisteredSheets(e, propServ = PropertiesService, lockServ = Lo
   if (lock.tryLock(350000)) {
     try {
       if (e.changeType != "INSERT_GRID") return;
-      const sheetNames = JSON.parse(propServ.getScriptProperties().getProperty("sheetName"));
+      const sheetNames = JSON.parse(propServ.getProperty("sheetName"));
       const dumpSite = getPoSpreadsheet(getConfig(env).DUMP_SITE_URL, env);
       e.source.getSheets().forEach(s => {
         var sheetName = s.getSheetName();
@@ -302,18 +299,32 @@ function getArchiveInventoryUrl(storeCode, env = 'PRD') {
   return getArchiveUrlByConfig(storeCode, env);
 }
 
+function getArchivePoUrl(env = 'PRD') {
+  return getArchivePoUrlByConfig(env);
+}
+
 function getPoUrl(env = 'PRD') {
   return getPoUrlByConfig(env);
 }
+
+var spreadSheetCache = {};
 
 function getPoSpreadsheet(url, env = 'PRD') {
   if (!url) {
     url = getPoUrl(env);
   }
+
+  if (spreadSheetCache[url]) {
+    console.log("Cache hit for URL: " + url);
+    return spreadSheetCache[url];
+  }
+
   while (true) {
     try {
-      return SpreadsheetApp.openByUrl(url);
-      break;
+      console.log("Loading spreadsheet: " + url);
+      let ss = SpreadsheetApp.openByUrl(url);
+      spreadSheetCache[url] = ss;
+      return ss;
     } catch (e) {
       console.error(e.stack);
       Utilities.sleep(5000);

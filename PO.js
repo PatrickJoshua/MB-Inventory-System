@@ -36,7 +36,7 @@ const PO = {
     },
 
     getEndRow: (spreadsheet = SpreadsheetApp.getActiveSpreadsheet()) => {
-        return Utils.getRowNum("COLS", spreadsheet);
+        return getRowNum("COLS", spreadsheet);
         //return 41;
     },
 
@@ -45,9 +45,18 @@ const PO = {
         PO.generateReport('', 'M', "3361", 1);
     },
 
-    installedOnEditTriggerPO: (e, propServ = PropertiesService, env = 'PRD') => {
+    installedOnEditTriggerPO: (e, getPropServ = null, env = 'PRD') => {
+        // Short circuit codes for optimized performance
+        // 1. Exit if the edit wasn't a single cell change (e.value is undefined for multi-cell pastes/deletes)
+        if (!e || !e.value) return;
+
+        // 2. Exit if the new value isn't "TRUE" (which is what a checked box registers as in GAS)
+        if (e.value !== "TRUE") return;
+        // End of short circuit codes
+
         // Priority Check: Use env from PropertiesService if available
-        const savedEnv = propServ.getScriptProperties().getProperty("env");
+        const propServ = getPropServ ? getPropServ() : PropertiesService.getScriptProperties();
+        const savedEnv = propServ.getProperty("env");
         if (savedEnv) {
             console.log(`[INFO] Environment override: Using "${savedEnv}" from PropertiesService (Argument was "${env}")`);
             env = savedEnv;
@@ -64,11 +73,11 @@ const PO = {
             if (rg.getA1Notation() == "U32" && rg.isChecked()) {
                 rg.uncheck();
                 spreadsheet.getRange('U34').clear();
-                PO.nextPO(Utils.getStoreCodeByName(spreadsheet.getRange("B6").getValue()), env);
-                //Utils.triggerFuncWithProcessingText("U34", function() {PO.nextPO()}, spreadsheet)
+                PO.nextPO(getStoreCodeByName(spreadsheet.getRange("B6").getValue()), env);
+                //triggerFuncWithProcessingText("U34", function() {PO.nextPO()}, spreadsheet)
             } else if (rg.getA1Notation() == "U36" && rg.isChecked()) {
                 rg.uncheck();
-                Utils.triggerFuncWithProcessingText("U36", function () { PO.pullLatestEnding(spreadsheet.getRange('B6').getValue(), undefined, true, env) }, spreadsheet);
+                triggerFuncWithProcessingText("U36", function () { PO.pullLatestEnding(spreadsheet.getRange('B6').getValue(), undefined, true, env) }, spreadsheet);
             } else if (rg.getA1Notation() == "U59" && rg.isChecked()) {
                 rg.uncheck();
                 PO.sendPO(env);
@@ -102,13 +111,13 @@ const PO = {
                 PO.computeTotalCashCollected(spreadsheet);
             } else if ((rg.getA1Notation() == "R65" || rg.getA1Notation() == "V74") && rg.isChecked()) {
                 rg.uncheck();
-                Utils.incrementLeftCell(spreadsheet, rg.getA1Notation());
+                incrementLeftCell(spreadsheet, rg.getA1Notation());
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S3" && rg.isChecked()) {
                 rg.uncheck();
                 PO.appendToCashReceived(spreadsheet.getRange("R3").getValue(), "R3", spreadsheet);
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S4" && rg.isChecked()) {
                 rg.uncheck();
-                PO.extractExpensesLoop(Utils.getStoreCodeByName(spreadsheet.getRange("A1").getValue()), env);
+                PO.extractExpensesLoop(getStoreCodeByName(spreadsheet.getRange("A1").getValue()), env);
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "R1" && rg.isChecked()) {
                 rg.uncheck();
                 PO.appendToCashCollected(spreadsheet);
@@ -116,34 +125,34 @@ const PO = {
                 rg.uncheck();
             } else if (spreadsheet.getSheetName() == "InventoryReplica" && rg.getA1Notation() == "A1" && rg.isChecked()) {
                 rg.uncheck();
-                Utils.triggerFuncWithProcessingText("C1", function () { PO.updateInventoryReplica(spreadsheet.getActiveSheet()); }, spreadsheet);
+                triggerFuncWithProcessingText("C1", function () { PO.updateInventoryReplica(spreadsheet.getActiveSheet()); }, spreadsheet);
             } else if (spreadsheet.getSheetName() == "GCash" && (rg.getA1Notation() == "C1" || rg.getA1Notation() == "I1") && rg.isChecked()) {
                 rg.uncheck();
                 let sheet = spreadsheet.getActiveSheet();
                 //let labelRg = sheet.getRange(rg.getRow(), rg.getColumn()+1)
-                //Utils.triggerFuncWithProcessingText(labelRg.getA1Notation(), function() {PO.addGcashToCashReceived(rg, sheet)}, sheet)
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(rg, sheet); }, sheet);
+                //triggerFuncWithProcessingText(labelRg.getA1Notation(), function() {PO.addGcashToCashReceived(rg, sheet)}, sheet)
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(rg, sheet); }, sheet);
             } else if (spreadsheet.getSheetName() == "GCash" && rg.getA1Notation() == "L1" && rg.isChecked()) { // Trigger collect gcash on both stores
                 rg.uncheck();
                 let sheet = spreadsheet.getActiveSheet();
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("C1"), sheet); }, sheet);
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("I1"), sheet); }, sheet);
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("C1"), sheet); }, sheet);
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.addGcashToCashReceived(sheet.getRange("I1"), sheet); }, sheet);
             } else if (spreadsheet.getSheetName() == "GCash" && (rg.getA1Notation() == "E1" || rg.getA1Notation() == "K1") && rg.isChecked()) {
                 rg.uncheck();
                 let sheet = spreadsheet.getActiveSheet();
                 //let labelRg = sheet.getRange(rg.getRow(), rg.getColumn()+1)
-                Utils.triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica")); }, sheet);
+                triggerFuncWithProcessingText(rg.getA1Notation(), function () { PO.updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica")); }, sheet);
             } else if (rg.isChecked() && sheetName.startsWith("*")) {
-                //Utils.triggerFuncWithProcessingText(a1Not, function() { PO.proxyAddToCashflow(e, a1Not, spreadsheet) }, spreadsheet)
+                //triggerFuncWithProcessingText(a1Not, function() { PO.proxyAddToCashflow(e, a1Not, spreadsheet) }, spreadsheet)
                 PO.proxyAddToCashflow(e, a1Not, spreadsheet);
             } else if (spreadsheet.getSheetName().startsWith("Cash flow") && rg.getA1Notation() == "S1" && rg.isChecked()) {
                 rg.uncheck();
-                Utils.triggerFuncWithProcessingText(a1Not, PO.getUnverifiedSheets, spreadsheet);
+                triggerFuncWithProcessingText(a1Not, PO.getUnverifiedSheets, spreadsheet);
             }
         } catch (e) {
             spreadsheet.getRange('U34').setValue(e).setFontColor("red");
             console.log(e.stack);
-            Utils.alert(e, "MB PO Err", "", env);
+            alert(e, "MB PO Err", "", env);
             throw e;
         }
     },
@@ -152,13 +161,13 @@ const PO = {
 
     pullLatestEnding: (storeCode, sheet = SpreadsheetApp.getActive().getActiveSheet(), isGenerateReport = true, env = 'PRD') => {
         console.log("Pulling latest ending for store " + storeCode);
-        var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
+        var inventorySpreadsheet = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env));
         var inventorySheets = inventorySpreadsheet.getSheets();
         var latestInvSheet = inventorySheets[inventorySheets.length - 1]
-        const endRow = Utils.getEndRow(latestInvSheet);
+        const endRow = getEndRow(latestInvSheet);
 
         var stocksCol = "D";
-        var currentStocksCell = Utils.getLastCol() + (endRow + 34);
+        var currentStocksCell = getLastCol() + (endRow + 34);
         var currentSheetStocksValue = latestInvSheet.getRange(currentStocksCell).getValue();
         console.log("Current sheet's stocks value: " + currentSheetStocksValue + " from " + currentStocksCell);
         var generateReportOffset = 0;
@@ -186,8 +195,15 @@ const PO = {
         console.log("Generating next PO for store " + storeCode);
         var spreadsheet = SpreadsheetApp.getActive();
 
+        // Batch read configuration cells with minimal API calls
+        var storeCodeFromSheet = spreadsheet.getRange('B6').getValue();
+        var oRange = spreadsheet.getRange('O35:P77').getValues();
+        var nextPoDateRaw = oRange[0][0]; // O35
+        var days2consume = oRange[2][0]; // O37
+        var cashFlowAddedText = oRange[42][1]; // P77
+
         // Check first if PO is registered to cashflow
-        if (spreadsheet.getRange('P77').isBlank()) {
+        if (!cashFlowAddedText || cashFlowAddedText === '') {
             spreadsheet.getRange("U34").setFontColor("red").setFontWeight("bold").setFontStyle("italic").setValue("ERROR: Current PO is not yet added to cash flow");
             SpreadsheetApp.flush();
             Utilities.sleep(5000);
@@ -195,23 +211,20 @@ const PO = {
             return;
         }
 
-        var nextPoDate = new Date(spreadsheet.getRange('O35').getValue());
-        var days2consume = spreadsheet.getRange('O37').getValue();
+        var nextPoDate = new Date(nextPoDateRaw);
         nextPoDate.setDate(nextPoDate.getDate() + days2consume);
-
-        var storeCode = spreadsheet.getRange("B6").getValue();
 
         const dtFormatted = Utilities.formatDate(nextPoDate, "GMT+8", "MM/dd/yy");
         const prevSheet = spreadsheet.getActiveSheet();
         spreadsheet.duplicateActiveSheet();
-        spreadsheet.getActiveSheet().setName('PO D' + dtFormatted + " " + storeCode);
+        spreadsheet.getActiveSheet().setName('PO D' + dtFormatted + " " + storeCodeFromSheet);
 
         spreadsheet.getRange('O35').setValue(nextPoDate);
 
         // Copy to previous order
         spreadsheet.getRange('I31:I').copyTo(spreadsheet.getRange('J31'), SpreadsheetApp.CopyPasteType.PASTE_VALUES, false);
 
-        // Cleanup
+        /* // Cleanup (old)
         spreadsheet.getRange('I31:I').setValue(''); // Prev Orders
         spreadsheet.getRange('O66:O72').setValue(''); // PO/SO Confirmation
         spreadsheet.getRange('P77').setValue(''); // Cash flow added text
@@ -219,19 +232,22 @@ const PO = {
         spreadsheet.getRange('U63').setValue(''); // Returned SMS
         spreadsheet.getRange('U74').setValue(''); // Returned SMS position
         spreadsheet.getRange('Q65').setValue(''); // Confirmation SMS position
+        */
+
+        // Combined Cleanup writes
+        spreadsheet.getRangeList(['I31:I', 'O66:O72', 'P77', 'P82', 'U63', 'U74', 'Q65']).clearContent();
 
         // Hardcode previous projected sales
         const prevSheetProjSalesRg = prevSheet.getRange("G7");
         prevSheetProjSalesRg.setValue(prevSheetProjSalesRg.getValue());
 
-        PO.pullLatestEnding(storeCode, spreadsheet, true, env);
-        //PO.generateReport('', 'M', storeCode);
+        PO.pullLatestEnding(storeCodeFromSheet, spreadsheet, true, env);
         prevSheet.hideSheet();
     },
 
     generateReport: (reportName, column, storeCode, rightOffset = 0, env = 'PRD') => {
         console.log("Generating report for store " + storeCode);
-        var inventorySpreadsheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
+        var inventorySpreadsheet = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env));
         var inventorySheets = inventorySpreadsheet.getSheets();
         //var inventorySheets = _inventorySheets//.slice(60)
 
@@ -259,7 +275,7 @@ const PO = {
 
         // Archive old sheets
         const sheetsToRetain = 30 //inventorySheetsLength-20 //30;
-        var archiveSpreadsheet = SpreadsheetApp.openByUrl(Utils.getArchiveInventoryUrl(storeCode, env));
+        var archiveSpreadsheet = SpreadsheetApp.openByUrl(getArchiveInventoryUrl(storeCode, env));
         if (inventorySheetsLength > sheetsToRetain + 2) {
             let today = new Date();
             let year = today.getFullYear() - 2000;
@@ -276,6 +292,15 @@ const PO = {
                 let newSheetName = nameArray.join(" ");
 
                 console.log("Archiving sheet: " + newSheetName);
+
+                // Safeguard: Remove any existing no-year duplicate (e.g., "04/15 PM John")
+                // before archiving the year-bearing version ("04/15/26 PM John")
+                let noYearSheet = archiveSpreadsheet.getSheetByName(currentSheetName);
+                if (noYearSheet) {
+                    console.log(`[DEDUP] Removing no-year duplicate "${currentSheetName}" in favor of "${newSheetName}"`);
+                    archiveSpreadsheet.deleteSheet(noYearSheet);
+                }
+
                 // Pre-check if existing
                 let existingSheet = archiveSpreadsheet.getSheetByName(newSheetName);
                 if (existingSheet) {
@@ -297,6 +322,29 @@ const PO = {
                 }
 
                 inventorySpreadsheet.deleteSheet(inventorySheets[i]);
+            }
+
+            // Final dedup sweep: find any remaining no-year sheets that conflict with year-bearing sheets
+            // This catches historical duplicates and edge cases from prior runs
+            let archiveSheetsList = archiveSpreadsheet.getSheets();
+            let archiveSheetNames = new Set(archiveSheetsList.map(s => s.getSheetName()));
+            const dateWithYearRegex = /^(\d{1,2}\/\d{1,2})\/(\d{2})\s/;  // matches "MM/dd/yy .*"
+
+            for (let s of archiveSheetsList) {
+                let name = s.getSheetName();
+                // Check if this is a no-year sheet (MM/dd <space>...) that has a year-bearing counterpart
+                if (/^\d{1,2}\/\d{1,2}\s/.test(name) && !dateWithYearRegex.test(name)) {
+                    // Build what the year-bearing name would look like for current and previous year
+                    let nameParts = name.split(" ");
+                    let possibleWithYear = nameParts[0] + "/" + year + " " + nameParts.slice(1).join(" ");
+                    let possibleWithPrevYear = nameParts[0] + "/" + (year - 1) + " " + nameParts.slice(1).join(" ");
+
+                    if (archiveSheetNames.has(possibleWithYear) || archiveSheetNames.has(possibleWithPrevYear)) {
+                        let keptName = archiveSheetNames.has(possibleWithYear) ? possibleWithYear : possibleWithPrevYear;
+                        console.log(`[DEDUP-SWEEP] Deleting no-year sheet "${name}" — year-bearing "${keptName}" exists`);
+                        archiveSpreadsheet.deleteSheet(s);
+                    }
+                }
             }
         }
 
@@ -361,8 +409,9 @@ const PO = {
 
     addPoToCashFlow: (storeCode, env = 'PRD') => {
         var spreadsheet = SpreadsheetApp.getActive();
-        var confirmationText = spreadsheet.getRange('O66').getValue();
-        const dt = Utilities.formatDate(new Date(spreadsheet.getRange('O35').getValue()), "GMT+8", "MM/dd");
+        var dataRead = spreadsheet.getRange("O35:O66").getValues();
+        var confirmationText = dataRead[31][0]; // O66 is 31 rows down from O35
+        const dt = Utilities.formatDate(new Date(dataRead[0][0]), "GMT+8", "MM/dd"); // O35 is at index 0
 
         try {
             var amt = confirmationText.match('(AMT=)(.*)( is)')[2];
@@ -390,12 +439,11 @@ const PO = {
             cashFlowSheetName = "Cash flow - PCGH";
         }
 
-        // Append value
+        // Append values in batch
         var cashFlowSheet = spreadsheet.getSheetByName(cashFlowSheetName);
         var colValues = cashFlowSheet.getRange("A:A").getValues();
         var count = colValues.filter(String).length;
-        cashFlowSheet.getRange(count + 1, 1).setValue(amt);
-        cashFlowSheet.getRange(count + 1, 2).setValue(dt + ' - ' + so);
+        cashFlowSheet.getRange(count + 1, 1, 1, 2).setValues([[amt, dt + ' - ' + so]]);
 
         spreadsheet.getRange('P77').setFontColor("green").setFontWeight("bold").setFontStyle("italic").setValue("Added " + amt + " to Cash flow sheet");
     },
@@ -404,14 +452,18 @@ const PO = {
         const smsApiUrl = getSmsApiUrlByConfig(env);
         console.log("Sending PO to " + smsApiUrl);
         var spreadsheet = SpreadsheetApp.getActive();
-        var poNum = spreadsheet.getRange("U58").getValue();
-        var poStr = spreadsheet.getRange("O58").getValue();
+        var poData = spreadsheet.getRange("O58:U58").getValues()[0];
+        var poStr = poData[0]; // O58 is at index 0
+        var poNum = poData[6]; // U58 is 6 columns to the right of O58
+
         var smsApiSheet = SpreadsheetApp.openByUrl(smsApiUrl).getSheetByName("SMS");
         smsApiSheet.appendRow([poNum, poStr, true]);
 
         var lastRow = smsApiSheet.getLastRow() + 1;
         const importRange = 'IMPORTRANGE("' + smsApiUrl + '", "' + "'SMS'!B\"&U74" + ')';
         console.log(importRange + "\nSMS Row: " + lastRow);
+
+        // Batch write status
         spreadsheet.getRange("U74").setValue(lastRow);
         spreadsheet.getRange("U63").setFormula(importRange);
     },
@@ -422,13 +474,15 @@ const PO = {
         var spreadsheet = SpreadsheetApp.getActive();
         var smsRow = spreadsheet.getRange("U74").getValue();
         var smsApiSheet = SpreadsheetApp.openByUrl(smsApiUrl).getSheetByName("SMS");
-        smsApiSheet.getRange("'SMS'!C" + smsRow).setFormula(true);
+        smsApiSheet.getRange("'SMS'!C" + smsRow).setFormula("TRUE");
 
         var lastRow = smsApiSheet.getLastRow() + 1;
         const importRange = 'IMPORTRANGE("' + smsApiUrl + '", "' + "'SMS'!B\"&Q65" + ')';
         console.log(importRange + "\nSMS Row: " + lastRow);
-        spreadsheet.getRange("Q65").setValue(lastRow);
-        spreadsheet.getRange("O66").setFormula(importRange);
+
+        // Batch write status updates
+        spreadsheet.getRangeList(["Q65", "O66"]).getRanges()[0].setValue(lastRow);
+        spreadsheet.getRangeList(["Q65", "O66"]).getRanges()[1].setFormula(importRange);
     },
 
     computeTotalCashCollected: (sheet = SpreadsheetApp.getActiveSheet()) => {
@@ -452,8 +506,9 @@ const PO = {
         if (!amt) return;
         var colValues = sheet.getRange("F:F").getValues();
         var count = colValues.filter(String).length;
-        sheet.getRange("E" + (count + 2)).setValue(new Date());
-        sheet.getRange("F" + (count + 2)).setValue(amt);
+
+        // Batch write data
+        sheet.getRange(count + 2, 5, 1, 2).setValues([[new Date(), amt]]);
 
         // Print
         if (rg != null) {
@@ -469,61 +524,55 @@ const PO = {
         var rawExpenseSheetName = sheet.getSheetName().replace("Cash flow", "Raw Expenses");
         var rawExpenseSheet = SpreadsheetApp.getActive().getSheetByName(rawExpenseSheetName);
 
+        var expValuesA = sheet.getRange("H:H").getValues();
+        var expCount = expValuesA.filter(String).length;
+        var receivedValues = sheet.getRange("F:F").getValues();
+        var receivedCount = receivedValues.filter(String).length;
+        var rawColValues = rawExpenseSheet.getRange("A:A").getValues();
+        var rawCount = rawColValues.filter(String).length;
+
+        var expenseInputRange = sheet.getRange("Q" + startingRow + ":R11").getValues();
+
         let validExpenses = [];
-        let cashReceiveds = [];
+        let cashReceivedRows = [];
         let rawExpenses = [];
-        for (i = startingRow; i < 12; i++) {
-            console.log("Reading R" + i);
-            var expenseAmount = sheet.getRange("R" + i).getValue();
-            console.log("Expense name: " + expenseName);
+        let now = new Date();
+
+        for (let idx = 0; idx < expenseInputRange.length; idx++) {
+            var expenseName = expenseInputRange[idx][0];
+            var expenseAmount = expenseInputRange[idx][1];
             if (expenseAmount) {
-                console.log("Valid expense");
-                // Get Expenses last row
-                var expenseName = sheet.getRange("Q" + i).getValue();
-                var expValues = sheet.getRange("H:H").getValues();
-                var expCount = expValues.filter(String).length;
+                console.log("Valid expense: " + expenseName);
 
-                // Get Cash received last row
-                var receivedValues = sheet.getRange("F:F").getValues();
-                var receivedCount = receivedValues.filter(String).length;
+                // Collect for Expenses (cols G, H, J, N)
+                validExpenses.push([now, 0, expenseAmount, expenseName]);
 
-                // Append to Expenses
-                sheet.getRange("G" + (expCount + 2)).setValue(new Date());
-                sheet.getRange("H" + (expCount + 2)).setValue(0);
-                sheet.getRange("J" + (expCount + 2)).setValue(expenseAmount);
-                sheet.getRange("N" + (expCount + 2)).setValue(expenseName);
-                validExpenses.push([new Date(), 0, expenseAmount, expenseName]);
+                // Collect for Cash received (cols E, F)
+                // Note: using setFormula later or just the value? Original used setFormula("-J" + (expCount + 2))
+                // Since we are batching, we should probably record the value or use a relative formula.
+                cashReceivedRows.push([now, -expenseAmount]);
 
-                // Append to Cash received
-                sheet.getRange("E" + (receivedCount + 2)).setValue(new Date());
-                sheet.getRange("F" + (receivedCount + 2)).setFormula("-J" + (expCount + 2));
-                cashReceiveds.push([new Date(), "-J" + (expCount + 2)]);
-
-                // Append to Raw Expenses
-                console.log("[DEBUG] rawExpenseSheet=" + rawExpenseSheet.getSheetName());
-                var colValues = rawExpenseSheet.getRange("A:A").getValues();
-                var count = colValues.filter(String).length;
-                console.log("rawExpenseSheet last row: " + count);
-                // rawExpenseSheet.getRange("A" + (count+1)).setValue(new Date());
-                // rawExpenseSheet.getRange("C" + (count+1)).setValue(expenseName);
-                // rawExpenseSheet.getRange("D" + (count+1)).setValue(expenseAmount);
-                rawExpenseSheet.getRange((count + 1), 1, 1, 4).setValues([[new Date(), null, expenseName, expenseAmount]]);
-                rawExpenses.push([new Date(), null, expenseName, expenseAmount]);
-                rawExpenseSheet.getRange("E" + (count)).copyTo(rawExpenseSheet.getRange("E" + (count + 1)));
-
-                //sheet.getRange("R" + i).setValue("Expensed " + sheet.getRange("F" + (receivedCount+2)).getValue())
-                //SpreadsheetApp.flush();
+                // Collect for Raw Expenses (cols A, B, C, D)
+                rawExpenses.push([now, null, expenseName, expenseAmount]);
             }
         }
 
-        for (i = 0; i < validExpenses.length; i++) {
-            break;
-        }
+        if (validExpenses.length > 0) {
+            // Write to Expenses (col G is index 7)
+            sheet.getRange(expCount + 2, 7, validExpenses.length, 4).setValues(validExpenses.map(v => [v[0], v[1], v[2], v[3]]));
 
-        SpreadsheetApp.flush();
-        Utilities.sleep(5000);
-        sheet.getRange("R5:R11").setValue("");
-        sheet.getRange("Q5").setValue("");
+            // Write to Cash received (col E is index 5)
+            sheet.getRange(receivedCount + 2, 5, cashReceivedRows.length, 2).setValues(cashReceivedRows);
+
+            // Write to Raw Expenses
+            rawExpenseSheet.getRange(rawCount + 1, 1, rawExpenses.length, 4).setValues(rawExpenses);
+
+            // Copy formula for col E in Raw Expenses
+            for (let i = 0; i < rawExpenses.length; i++) {
+                rawExpenseSheet.getRange("E" + (rawCount + i)).copyTo(rawExpenseSheet.getRange("E" + (rawCount + 1 + i)));
+            }
+        }
+        sheet.getRange("Q5:R11").setValue("");
     },
 
     appendToCashCollected: (sheet = SpreadsheetApp.getActiveSheet()) => {
@@ -533,19 +582,20 @@ const PO = {
         var receivedValues = sheet.getRange("F:F").getValues();
         var receivedCount = receivedValues.filter(String).length;
 
-        sheet.getRange("E" + (receivedCount + 2)).setValue(new Date());
+        // Batch write
+        let addedVal = sheet.getRange("O" + (count + 1)).getValue();
+        sheet.getRange((receivedCount + 2), 5, 1, 2).setValues([[new Date(), "R" + (count + 1)]]);
+
+        // We need to set the formula for index 6 (col F) specifically if we use setValues with string formula
         sheet.getRange("F" + (receivedCount + 2)).setFormula("R" + (count + 1));
 
-        // Print
-        //var addedVal = sheet.getRange("F" + (receivedCount+2)).getValue();
-        let addedVal = sheet.getRange("O" + (count + 1)).getValue();
-        sheet.getRange("R" + (count + 1)).setValue(addedVal);
-        sheet.getRange("S" + (count + 1)).setValue("Added to cash received");
+        // Note: R and S columns update
+        sheet.getRange(count + 1, 18, 1, 2).setValues([[addedVal, "Added to cash received"]]);
         SpreadsheetApp.flush();
     },
 
     extractExpensesLoop: (storeCode = "3361", env = 'PRD') => {
-        var inventorySpreadSheet = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env));
+        var inventorySpreadSheet = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env));
         console.log("Spreadsheet name: " + inventorySpreadSheet.getName());
         var sheets = inventorySpreadSheet.getSheets();
         var props = PropertiesService.getScriptProperties();
@@ -557,7 +607,7 @@ const PO = {
             var dt = split[0];
             var employeeName = split[2];
             //console.log("Extracting expenses on: " + inventorySheetName)
-            Utils.extractExpenses(dt, employeeName, storeCode, Utils.getEndRow(inventorySheet), inventorySheet, env);
+            extractExpenses(dt, employeeName, storeCode, getEndRow(inventorySheet), inventorySheet, env);
             //console.log("current index: " + i)
             props.setProperty("expenseIndexCounter", i);
             SpreadsheetApp.flush();
@@ -568,108 +618,142 @@ const PO = {
         var sheet = SpreadsheetApp.getActive().getSheetByName("Cash flow - PCGH");
         var rawExpenseSheetName = sheet.getSheetName().replace("Cash flow", "Raw Expenses");
         var rawExpenseSheet = SpreadsheetApp.getActive().getSheetByName(rawExpenseSheetName);
-        var colValues = rawExpenseSheet.getRange("A:A").getValues();
-        var count = colValues.filter(String).length;
+        var colValuesRaw = rawExpenseSheet.getRange("A:A").getValues();
+        var count = colValuesRaw.filter(String).length;
 
-        for (i = 2; i < 393; i++) {
-            var sales = sheet.getRange("K" + i).getValue();
+        // Batch read columns G, J, K, N
+        // G=7, J=10, K=11, N=14
+        var dataRange = sheet.getRange("G2:N393").getValues();
+        var batchWrites = [];
+
+        for (var idx = 0; idx < dataRange.length; idx++) {
+            var date = dataRange[idx][0];  // Col G
+            var expenseName = dataRange[idx][7]; // Col N
+            var amount = dataRange[idx][3]; // Col J
+            var sales = dataRange[idx][4]; // Col K
+
             if (!sales) {
-                rawExpenseSheet.getRange("A" + (++count)).setValue(sheet.getRange("G" + i).getValue());
-                rawExpenseSheet.getRange("C" + (count)).setValue(sheet.getRange("N" + i).getValue());
-                rawExpenseSheet.getRange("D" + (count)).setValue(sheet.getRange("J" + i).getValue());
+                batchWrites.push([date, null, expenseName, amount]);
             }
+        }
+
+        if (batchWrites.length > 0) {
+            rawExpenseSheet.getRange(count + 1, 1, batchWrites.length, 4).setValues(batchWrites);
         }
     },
 
     pattyDistribution: (spreadsheet = SpreadsheetApp.getActive(), env = 'PRD') => {
         console.log("Update Patty distribution");
+        var lastRow = spreadsheet.getLastRow();
+        var allData = spreadsheet.getRange("A1:E" + lastRow).getValues();
+        var colBData = allData.map(row => [row[1]]);
+        var colCData = allData.map(row => [row[2]]);
+        var colEData = allData.map(row => [row[4]]);
+        var changed = false;
 
-        Utils.getStoreCodes().forEach((storeCode) => {
+        getStoreCodes().forEach((storeCode) => {
             console.log("Current store code: " + storeCode);
 
-            var lastPoSheet = Utils.getLastPoSheet(storeCode, env);
+            var poSheet = getLastPoSheet(storeCode, env);
+            var poMap = constructPoMap(poSheet);
 
-            // pull latest
-            // PO.pullLatestEnding(storeCode, lastPoSheet, false)
+            for (var i = 0; i < lastRow; i++) {
+                if (allData[i][0] == storeCode) {
+                    console.log("[DEBUG] Found store code at row " + (i + 1));
 
-            // populate ordered sets
-            for (i = 1; i < spreadsheet.getLastRow(); i++) {
-                //console.log("[DEBUG] looking on row " + i + ": " + spreadsheet.getRange("A" + i).getValue())
-                if (spreadsheet.getRange("A" + i).getValue() == storeCode) {
-                    console.log("Found on row: " + i);
-                    //spreadsheet.getRange("E" + i).setValue(lastPoSheet.getspreadsheetName()) // Set spreadsheet name for stocks lookup
+                    for (var j = i + 1; j < lastRow; j++) {
+                        var product = allData[j][0];
+                        if (product === "") break;
 
-                    var poMap = Utils.constructPoMap(lastPoSheet);
-                    while (true) {
-                        var product = spreadsheet.getRange("A" + ++i).getValue();
-                        console.log("Product: " + product);
-                        if (!product) break;
-                        spreadsheet.getRange("C" + i).setValue(poMap.get(product));
+                        if (poMap.has(product)) {
+                            colCData[j][0] = poMap.get(product);
+                            changed = true;
+                        }
                     }
 
-                    // Clear previous patty distribution
-                    while (spreadsheet.getRange("B" + (i)).getValue() != "Freezer Top") { console.log("Looking for Freezer Top on row " + i++); }
-                    while (spreadsheet.getRange("B" + ++i).getValue() != "Freezer Bottom") {
-                        console.log("Clearing row " + i);
-                        spreadsheet.getRange("B" + i).setValue("");
-                        spreadsheet.getRange("E" + i).setValue("");
+                    // Look for Freezer Top
+                    for (var j = i + 1; j < lastRow; j++) {
+                        if (allData[j][1] == "Freezer Top") {
+                            for (var k = j + 1; k < lastRow; k++) {
+                                if (allData[k][1] == "Freezer Bottom") break;
+                                if (colBData[k][0] !== "" || colEData[k][0] !== "") {
+                                    colBData[k][0] = "";
+                                    colEData[k][0] = "";
+                                    changed = true;
+                                }
+                            }
+                            break;
+                        }
                     }
-                    break;
                 }
             }
         });
+
+        if (changed) {
+            spreadsheet.getRange("B1:B" + lastRow).setValues(colBData);
+            spreadsheet.getRange("C1:C" + lastRow).setValues(colCData);
+            spreadsheet.getRange("E1:E" + lastRow).setValues(colEData);
+        }
 
         // Update Inventory Replica
         PO.updateInventoryReplica(spreadsheet.getSheetByName("InventoryReplica"), env);
     },
 
     updateInventoryReplica: (sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') => {
-        // let map = new Map();
-        // map.set("3252", "A2")
-        // map.set("3361", "P2")
+        var sheet = SpreadsheetApp.getActive().getSheetByName("InventoryReplica");
+        var lastCol = sheet.getLastColumn();
 
-        let storeCodes = Utils.getStoreCodes();
-        let processedStoreCodes = 0;
+        // Batch read row 2
+        var row2Vals = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
+        var updates = [];
 
-        for (i = 1; i < sheet.getLastColumn(); i++) {
-            let storeCode = sheet.getRange(2, i).getValue();
-            //console.log("Scanning " + storeCode)
-            if (storeCodes.includes(String(storeCode))) {
-                console.log("Found " + storeCode);
-                let sheets = SpreadsheetApp.openByUrl(Utils.getInventoryUrl(storeCode, env)).getSheets();
+        let storeCodes = getStoreCodes();
+
+        for (var i = 0; i < lastCol; i++) {
+            let storeCode = row2Vals[i];
+            if (storeCode && storeCode != "" && storeCodes.includes(String(storeCode))) {
+                let sheets = SpreadsheetApp.openByUrl(getInventoryUrl(storeCode, env)).getSheets();
                 let lastSheetName = sheets[sheets.length - 1].getSheetName();
-                sheet.getRange(2, ++i).setValue(lastSheetName);
-                processedStoreCodes++;
+                updates.push({ col: i + 2, val: lastSheetName }); // i+2 because we are writing to the column *after* the store code
             }
-
-            if (processedStoreCodes >= storeCodes.length) break;
         }
 
-        // Utils.getStoreCodes().forEach((storeCode) => {
-        //   let sheets = sheetApp.openByUrl(Utils.getInventoryUrl(storeCode)).getSheets();
-        //   let lastSheetName = sheets[sheets.length-1].getSheetName();
-        //   sheet.getRange(map.get(storeCode)).setValue(lastSheetName);
-        // })
+        // Apply updates. Since columns are not necessarily contiguous, we iterate.
+        updates.forEach(u => sheet.getRange(2, u.col).setValue(u.val));
     },
 
-    addGcashToCashReceived: (rg, gcashSheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') => {
+    addGcashToCashReceived: (rg, env = 'PRD') => {
+        var gcashSheet = SpreadsheetApp.getActive().getSheetByName("GCash");
         let rgRow = rg.getRow();
         let rgCol = rg.getColumn();
 
-        let startRow = rgRow + 2;
-        let shiftCol = rgCol - 2;
-        let gcashCol = rgCol - 1;
-        let manualCol = rgCol + 1;
-        let replicaCol = rgCol + 2;
+        // Helper functions to get column indices based on rgCol
+        const getShiftColIdx = () => rgCol - 2;
+        const getGcashColIdx = () => rgCol - 1;
+        const getCheckColIdx = () => rgCol + 1;
+        const getReplicaColIdx = () => rgCol + 2;
+        const getManualColIdx = () => rgCol + 3;
 
-        let totalGcashRg = gcashSheet.getRange(rgRow, rgCol - 1);
+        var replicaCol = getReplicaColIdx();
+        var manualCol = getManualColIdx();
+        var gcashCol = getGcashColIdx();
+        var shiftCol = getShiftColIdx();
+        var checkCol = getCheckColIdx();
+
+        // Batch read columns
+        var maxRows = 998;
+        var startRow = rgRow + 2;
+        var replicaVals = gcashSheet.getRange(startRow, replicaCol, maxRows, 1).getValues();
+        var manualVals = gcashSheet.getRange(startRow, manualCol, maxRows, 1).getValues();
+
+        var totalGcashRg = gcashSheet.getRange(rgRow, gcashCol);
+        var actualGcashRg = gcashSheet.getRange(rgRow, checkCol);
+
         let totalGcashVal = totalGcashRg.getValue();
-        let actualGcashRg = gcashSheet.getRange(rgRow, rgCol + 1);
-        let actualGcashVal = totalGcashVal;
+        let actualGcashVal = actualGcashRg.getValue();
 
-        // Replace the var to be recorded to the actual gcash amount if supplied
-        if (!actualGcashRg.isBlank()) {
-            actualGcashVal = actualGcashRg.getValue();
+        if (actualGcashRg.isBlank() || actualGcashVal === "") {
+            actualGcashVal = totalGcashVal;
         }
 
         // Initialize store name
@@ -680,59 +764,47 @@ const PO = {
         let gcashVariance = actualGcashVal - totalGcashVal;
         console.log(`GCash variance: ${gcashVariance}`);
         if (gcashVariance != 0) {
-            Utils.cashCollectedAppender(storeName, `${new Date().getMonth() + 1}/${new Date().getDate()}/${new Date().getFullYear()}`, 0, 0, 0, 0, 0, 0, gcashVariance, "GCash", 0);
+            cashCollectedAppender(storeName, Utilities.formatDate(new Date(), "GMT+8", "MM/dd/yyyy"), 0, 0, 0, 0, 0, 0, gcashVariance, "GCash", 0);
         }
 
         // Save actual gcash amount to cash received
-        PO.appendToCashReceived(actualGcashVal, null, Utils.getCashFlowSheet(storeName));
+        PO.appendToCashReceived(actualGcashVal, null, getCashFlowSheet(storeName));
 
-        // Clear
-        gcashSheet.getRange(startRow, shiftCol, 998, 2).clear();
-        gcashSheet.getRange(startRow, rgCol, 998, 1).uncheck();
-        actualGcashRg.clear(); // clear actual gcash range
+        // Processing Replicas and Manuals
+        let gcashWrites = new Array(maxRows).fill([""]);
+        let checks = new Array(maxRows).fill([false]);
+        let replicaManualCounter = 0;
 
-        // Save state of start row for manual after replica mutation
-        let manualStartRow = startRow;
-        let replicaAndManualCounter = 0;
-
-        // Copy replicas
-        while (true) {
-            let manualRg = gcashSheet.getRange(startRow, replicaCol);
-            let manualVal = manualRg.getValue();
-
-            if (manualVal) {
-                gcashSheet.getRange(startRow, gcashCol).setValue(manualVal);
-                gcashSheet.getRange(startRow, rgCol).check();
-                startRow++;
-                replicaAndManualCounter++;
-            } else {
-                break;
+        // Process Replicas
+        for (let i = 0; i < maxRows; i++) {
+            if (replicaVals[i][0]) {
+                gcashWrites[replicaManualCounter] = [replicaVals[i][0]];
+                checks[replicaManualCounter] = [true];
+                replicaManualCounter++;
+            }
+        }
+        // Process Manuals
+        for (let i = 0; i < maxRows; i++) {
+            if (manualVals[i][0]) {
+                gcashWrites[replicaManualCounter] = [manualVals[i][0]];
+                checks[replicaManualCounter] = [true];
+                replicaManualCounter++;
             }
         }
 
-        // Move manuals
-        while (true) {
-            let manualRg = gcashSheet.getRange(manualStartRow, manualCol);
-            let manualVal = manualRg.getValue();
-
-            if (manualVal) {
-                gcashSheet.getRange(startRow, gcashCol).setValue(manualVal);
-                gcashSheet.getRange(startRow, rgCol).check();
-                manualRg.clear();
-                startRow++;
-                manualStartRow++;
-                replicaAndManualCounter++;
-            } else {
-                break;
-            }
+        if (replicaManualCounter > 0) {
+            // Write collected values back to gcash column starting at startRow
+            gcashSheet.getRange(startRow, gcashCol, maxRows, 1).setValues(gcashWrites);
+            // Check the boxes for entries
+            gcashSheet.getRange(startRow, rgCol, maxRows, 1).setValues(checks);
         }
 
-        // Auto-check future replica and manual entries
-        while (replicaAndManualCounter-- > 0) {
-            gcashSheet.getRange(startRow++, rgCol).check();
-        }
-
-        // Note: optimize the loops above to minimize getRange(), getValue(), clear(), and check() operations
+        // Cleanup original columns
+        gcashSheet.getRange(startRow, replicaCol, maxRows, 1).clearContent();
+        gcashSheet.getRange(startRow, manualCol, maxRows, 1).clearContent();
+        gcashSheet.getRange(startRow, replicaCol, maxRows, 1).uncheck();
+        gcashSheet.getRange(startRow, manualCol, maxRows, 1).uncheck();
+        actualGcashRg.clearContent();
     },
 
     getUnverifiedSheets: (sheet = SpreadsheetApp.getActive().getActiveSheet(), env = 'PRD') => {
@@ -756,9 +828,9 @@ const PO = {
 
     proxyAddToCashflow: (e, a1Not, spreadsheet = SpreadsheetApp.getActive(), env = 'PRD') => {
         let sheet = spreadsheet.getActiveSheet();
-        let endRow = Utils.getEndRow(sheet);
+        let endRow = getEndRow(sheet);
 
-        if (a1Not == Utils.getTotalCol() + (endRow + 9)) {
+        if (a1Not == getTotalCol() + (endRow + 9)) {
             //sheet.getRange(a1Not).setValue("Processing...")
             sheet.setName(sheet.getSheetName().substring(1));  // Remove the asterisk
 
@@ -779,6 +851,162 @@ const PO = {
 
     autoUpdateInventoryReplica: (e, env = 'PRD') => {
         PO.updateInventoryReplica(SpreadsheetApp.getActive().getSheetByName("InventoryReplica"), env);
+    },
+
+    /**
+     * Moves PO sheets from source to Archive PO spreadsheet.
+     * Retains the latest PO sheet per store code (3252 and 3361).
+     * Handles 6-minute limit with auto-resume triggers.
+     * 
+     * @param {string} env Environment target (PRD/DEV)
+     * @param {number} batchSize Optional limit on sheets to process in one go
+     */
+    archivePoSheets: (env = 'PRD', batchSize = null) => {
+        const startTime = new Date().getTime();
+        const limitMs = 315000; // 5 minutes 15 seconds
+        const propServ = PropertiesService.getScriptProperties();
+        const config = getConfig(env);
+
+        console.log(`[ARCHIVE] Starting PO archiving process (${env} environment)`);
+
+        const sourceSs = getPoSpreadsheet(getPoUrl(env), env);
+        const sheets = sourceSs.getSheets();
+
+        // Regex to identify PO sheets: "PO Dmm/dd/yy (storeCode)" or "PO Dmm/dd (storeCode)" or "PO Dmm/dd"
+        const poNameRegex = /^PO D\d{1,2}\/\d{1,2}(\/\d{2,4})?( (3252|3361))?$/;
+
+        // Filter and identify latest sheet per store code
+        let poSheets = [];
+        let latestPerStore = { "3252": -1, "3361": -1 };
+
+        sheets.forEach((sheet, index) => {
+            const name = sheet.getName();
+            if (poNameRegex.test(name)) {
+                poSheets.push({ sheet: sheet, name: name, index: index });
+
+                // Identify store code suffix if present
+                const storeMatch = name.match(/ (3252|3361)$/);
+                if (storeMatch) {
+                    const storeCode = storeMatch[1];
+                    // Sheet index in ss.getSheets() determines "latest" (rightmost = latest)
+                    if (index > latestPerStore[storeCode]) {
+                        latestPerStore[storeCode] = index;
+                    }
+                }
+            }
+        });
+
+        // Build list of sheets to archive (exclude the latest per store)
+        let archivableSheets = poSheets.filter(item => {
+            const storeMatch = item.name.match(/ (3252|3361)$/);
+            if (storeMatch) {
+                const storeCode = storeMatch[1];
+                return item.index !== latestPerStore[storeCode];
+            }
+            return true; // Sheets without store code are always archivable
+        });
+
+        if (archivableSheets.length === 0) {
+            console.log("[ARCHIVE] No sheets to archive.");
+            propServ.deleteProperty("archivePoProgress");
+            propServ.deleteProperty("archivePoEnv");
+            return;
+        }
+
+        // No index-based resume needed: previously archived sheets
+        // have been deleted, so archivableSheets already reflects remaining work.
+
+        const archiveSs = getPoSpreadsheet(getArchivePoUrl(env), env);
+        let processedCount = 0;
+
+        console.log(`[ARCHIVE] Archiving ${archivableSheets.length} matching sheets`);
+
+        for (let i = 0; i < archivableSheets.length; i++) {
+            // Time guard check
+            if (new Date().getTime() - startTime > limitMs) {
+                console.log(`[ARCHIVE] Approaching time limit. Saving progress at index ${i}`);
+                propServ.setProperty("archivePoProgress", "in_progress");
+                propServ.setProperty("archivePoEnv", env);
+
+                // Schedule continuation trigger
+                PO.cleanupArchiveTriggers();
+                ScriptApp.newTrigger("archivePoContinuation")
+                    .timeBased()
+                    .after(30000) // 30 seconds delay
+                    .create();
+
+                console.log("[ARCHIVE] Continuation trigger scheduled.");
+                return;
+            }
+
+            // Batch size check
+            if (batchSize && processedCount >= batchSize) {
+                console.log(`[ARCHIVE] Batch size reached (${batchSize}). Saving progress at index ${i}`);
+                propServ.setProperty("archivePoProgress", "in_progress");
+                propServ.setProperty("archivePoEnv", env);
+                return;
+            }
+
+            const item = archivableSheets[i];
+            const sheetToMove = item.sheet;
+            const sheetName = item.name;
+
+            console.log(`[ARCHIVE] Processing: ${sheetName}`);
+
+            try {
+                // Check if already exists in archive
+                let existing = archiveSs.getSheetByName(sheetName);
+                if (existing) {
+                    console.log(`[ARCHIVE] Sheet ${sheetName} already in archive. Deleting from source.`);
+                } else {
+                    sheetToMove.copyTo(archiveSs).setName(sheetName);
+                }
+                sourceSs.deleteSheet(sheetToMove);
+                processedCount++;
+            } catch (e) {
+                console.error(`[ARCHIVE] Error moving sheet ${sheetName}: ${e.message}`);
+                // In case of error, we stop and let the next run handle it
+                propServ.setProperty("archivePoProgress", "in_progress");
+                propServ.setProperty("archivePoEnv", env);
+                throw e;
+            }
+        }
+
+        console.log(`[ARCHIVE] Finished archiving ${processedCount} sheets.`);
+        propServ.deleteProperty("archivePoProgress");
+        propServ.deleteProperty("archivePoEnv");
+        PO.cleanupArchiveTriggers();
+    },
+
+    /**
+     * Deletes all archivePoContinuation triggers to prevent duplicates.
+     */
+    cleanupArchiveTriggers: () => {
+        ScriptApp.getProjectTriggers().forEach(t => {
+            if (t.getHandlerFunction() === "archivePoContinuation") {
+                ScriptApp.deleteTrigger(t);
+            }
+        });
     }
 
 };
+
+/**
+ * Global continuation function for trigger-based resumption.
+ */
+function archivePoContinuation() {
+    const propServ = PropertiesService.getScriptProperties();
+    const env = propServ.getProperty("archivePoEnv") || "PRD";
+    console.log(`[ARCHIVE] Trigger resumed for ${env} environment.`);
+    PO.archivePoSheets(env);
+}
+
+function getPOfunction(funcName) {
+    return PO[funcName];
+}
+
+/* Sample usage:
+function installedOnEditTrigger(e){
+  MBInventorySystem.getPOfunction("installedOnEditTriggerPO")(e, () => PropertiesService.getScriptProperties(), 'DEV')
+}
+*/

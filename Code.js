@@ -1,6 +1,9 @@
 function test(s = SpreadsheetApp.getActiveSheet()) {
-  let ss = SpreadsheetApp.getActive();
-  console.log(ss.getSheetName())
+  getPOfunction("archivePoSheets")('DEV', 2)
+}
+
+function archivePoSheets() {
+  getPOfunction("archivePoSheets")()
 }
 
 function adhocTrigger() {
@@ -23,8 +26,9 @@ function onOpen() {
   registerCurrentSheets();
 }
 
-function installedOnChange(e) {
-  deleteUnregisteredSheets(e);
+function installedOnChange(e, getPropServ = null) {
+  const propServ = getPropServ ? getPropServ() : PropertiesService.getScriptProperties();
+  deleteUnregisteredSheets(e, propServ);
 }
 
 // console.log(`[DEBUG] Filtered checkbox range: ${JSON.stringify(rg, null, 2)}`)
@@ -35,7 +39,8 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
   if (!e || !e.value) return;
 
   // 2. Exit if the new value isn't "TRUE" (which is what a checked box registers as in GAS)
-  if (e.value !== "TRUE") return;
+  // Additional condition: If the employee name is edited, allow to passthrough for checking if the new shift checkbox is ticked
+  if (e.value !== "TRUE" && !(e.range.columnEnd == 6 && e.range.rowEnd == 109)) return;
   // End of short circuit codes
 
   let rg = e.range;
@@ -50,13 +55,14 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
     console.log(`[INFO] Using environment: "${env}" (No override found in PropertiesService)`);
   }
 
-  const endRow = parseInt(propServ.getProperty("endRow")) || getEndRow();
+  const endRow = parseInt(propServ.getProperty("endRow")) || getEndRow();   // TODO: ensure this is used by all functions
   const spreadsheet = e.source;
   const sheet = spreadsheet.getActiveSheet();
   const a1Not = rg.getA1Notation();
   try {
     if (rg.isChecked()) {
       rg.uncheck();
+      SpreadsheetApp.flush();
 
       /*if (SpreadsheetApp.getActive().getSheetName() == "Attendance") {    // Insert checkboxes on attendance sheet
         if (a1Not == "H1") {
@@ -69,42 +75,7 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
       } else*/ if (a1Not == getDupFuncCol() + (endRow + 43)) {
         console.log("Starting new shift script");
 
-        // Cleanup
-        spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).setBorder(false, false, false, false, false, false, null, SpreadsheetApp.BorderStyle.SOLID);
-        spreadsheet.getRange(getDupLabelCol() + (endRow + 40) + ':' + getDupLabelCol() + (endRow + 44)).clear({ contentsOnly: true, skipFilteredRows: true });
-
-        var dt = spreadsheet.getRange(getDupFuncCol() + (endRow + 40));
-        var shft = spreadsheet.getRange(getDupFuncCol() + (endRow + 41));
-        var nam = spreadsheet.getRange(getDupFuncCol() + (endRow + 42));
-
-        if (dt.isBlank()) {
-          dt.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
-          spreadsheet.getRange(getDupLabelCol() + (endRow + 40)).setValue('<- Set a date').setFontColor("red").setFontWeight("bold");
-          return;
-        }
-        if (shft.isBlank()) {
-          shft.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
-          spreadsheet.getRange(getDupLabelCol() + (endRow + 41)).setValue('<- Set AM or PM').setFontColor("red").setFontWeight("bold");
-          return;
-        }
-        if (nam.isBlank()) {
-          nam.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
-          spreadsheet.getRange(getDupLabelCol() + (endRow + 42)).setValue('<- Set your name').setFontColor("red").setFontWeight("bold");
-          return;
-        }
-
-        // Post cleanup
-        var dateObj = dt.getValue();
-        var shiftTime = shft.getValue();
-        var empName = nam.getValue();
-
-        // Set confirmation messages
-        const dtFormatted = Utilities.formatDate(dateObj, "GMT+8", "MM/dd");
-        const newSheetName = dtFormatted + ' ' + shiftTime + ' ' + empName;
-        spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).clear({ contentsOnly: true, skipFilteredRows: true });
-        spreadsheet.getRange(getDupLabelCol() + (endRow + 43)).setValue('OK').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
-        spreadsheet.getRange('B' + (endRow + 45)).setValue('New tab created: "' + newSheetName + '"').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
-        actualNewshift(dateObj, shiftTime, empName, propServ, env);
+        startNewShift(spreadsheet, endRow, propServ, env);
 
       } else if (a1Not == 'A' + (endRow + 31)) {  // Get delivery
         console.log("Get delivery");
@@ -145,7 +116,7 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
         let currentContent = rg.getValue();
         rg.setValue("Processing...");
         rg.offset(0, 1).setValue(Utilities.formatDate(new Date(), "Asia/Hong_Kong", "HH:mm:ss"));
-        SpreadsheetApp.flush();
+        //SpreadsheetApp.flush();
 
         let totalColIdx = getTotalCol().charCodeAt(0) - 'A'.charCodeAt(0) + 1;
         let totalColVals = sheet.getRange((endRow + 2), totalColIdx, 10, 1).getValues();
@@ -176,7 +147,6 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
         addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, expectedSales, overLoss, employeeName, spoiled, dagdagPeraSaKaha, endRow, getStoreCodeByName(storeName), getLockServ, env);
 
         rg.setValue(currentContent);
-        SpreadsheetApp.flush();
         rg.check();
 
       } else if (a1Not == getLossOverCol() + (endRow + 10)) { // Verify delivery
@@ -193,6 +163,13 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
         rg.setValue(currentContent);
         SpreadsheetApp.flush();
       }
+
+    } else if (a1Not == getDupFuncCol() + (endRow + 42) && sheet.getRange(getDupFuncCol() + (endRow + 43)).isChecked()) {
+      sheet.getRange(getDupFuncCol() + (endRow + 43)).uncheck();
+      SpreadsheetApp.flush();
+
+      console.log("Starting new shift script from name change");
+      startNewShift(spreadsheet, endRow, propServ, env);
 
     } else if (a1Not == getDupFuncCol() + (endRow + 43) && (rg.isBlank() || rg.getValue() == "" || !(rg.getValue() == false || rg.getValue() == true))) {   // Prevent checkbox from being deleted
       console.log("Inserting checkboxes");
@@ -213,4 +190,44 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
     }
     console.error(e.stack);
   }
+}
+
+function startNewShift(spreadsheet, endRow, propServ, env) {
+  // Cleanup
+  spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).setBorder(false, false, false, false, false, false, null, SpreadsheetApp.BorderStyle.SOLID);
+  spreadsheet.getRange(getDupLabelCol() + (endRow + 40) + ':' + getDupLabelCol() + (endRow + 44)).clear({ contentsOnly: true, skipFilteredRows: true });
+
+  var dt = spreadsheet.getRange(getDupFuncCol() + (endRow + 40));
+  var shft = spreadsheet.getRange(getDupFuncCol() + (endRow + 41));
+  var nam = spreadsheet.getRange(getDupFuncCol() + (endRow + 42));
+
+  if (dt.isBlank()) {
+    dt.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
+    spreadsheet.getRange(getDupLabelCol() + (endRow + 40)).setValue('<- Set a date').setFontColor("red").setFontWeight("bold");
+    return;
+  }
+  if (shft.isBlank()) {
+    shft.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
+    spreadsheet.getRange(getDupLabelCol() + (endRow + 41)).setValue('<- Set AM or PM').setFontColor("red").setFontWeight("bold");
+    return;
+  }
+  if (nam.isBlank()) {
+    nam.setBorder(true, true, true, true, false, false, "red", SpreadsheetApp.BorderStyle.DASHED);
+    spreadsheet.getRange(getDupLabelCol() + (endRow + 42)).setValue('<- Set your name').setFontColor("red").setFontWeight("bold");
+    return;
+  }
+
+  // Post cleanup
+  var shiftDetails = spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).getValues();
+  var dateObj = shiftDetails[0][0];
+  var shiftTime = shiftDetails[1][0];
+  var empName = shiftDetails[2][0];
+
+  // Set confirmation messages
+  const dtFormatted = Utilities.formatDate(dateObj, "GMT+8", "MM/dd");
+  const newSheetName = dtFormatted + ' ' + shiftTime + ' ' + empName;
+  spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).clear({ contentsOnly: true, skipFilteredRows: true });
+  spreadsheet.getRange(getDupLabelCol() + (endRow + 43)).setValue('OK').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
+  spreadsheet.getRange('B' + (endRow + 45)).setValue('New tab created: "' + newSheetName + '"').setFontStyle("italic").setFontWeight("bold").setFontColor("green");
+  actualNewshift(dateObj, shiftTime, empName, propServ, env);
 }
