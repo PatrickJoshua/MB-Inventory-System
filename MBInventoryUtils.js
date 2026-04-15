@@ -1,3 +1,7 @@
+function deleteLastNSheets(n, ss = SpreadsheetApp.getActiveSpreadsheet()) {
+  (n) => ss.getSheets().slice(-n).forEach(s => ss.deleteSheet(s));
+}
+
 function _getEndRow(spreadsheet = SpreadsheetApp.getActiveSpreadsheet(), propServ = PropertiesService) {  // TODO: Optimize this
   console.log(propServ.getScriptProperties().getProperty("endRow"));
   console.log(getRowNum("<END>", spreadsheet) - 1);
@@ -1296,6 +1300,34 @@ function autoFormulaEnding(spreadsheet) {
       cell.setFormula(newFormula);
       console.log(`Converted ${cell.getA1Notation()} to formula: "${newFormula}"`);
     }
+  }
+}
+
+/**
+ * Deletes all sheets whose names do NOT match the inventory date pattern "MM/DD/YY <shift>".
+ * Sheets are deleted from right to left to avoid index shifting issues.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} [ss] The spreadsheet to operate on.
+ */
+function deleteMalformedNamedInventorySheets(ss = SpreadsheetApp.getActiveSpreadsheet()) {
+  var sheets = ss.getSheets();
+  var datePattern = /^[0-9][0-9]\/[0-9][0-9]\/[0-9][0-9] .*/;
+
+  // Filter to sheets that do NOT match the date pattern
+  var sheetsToDelete = sheets.filter(function (sheet) {
+    return !datePattern.test(sheet.getName());
+  });
+
+  console.log("Sheets to delete: " + sheetsToDelete.map(function (s) { return s.getName(); }));
+  console.log(`Total sheets to delete: ${sheetsToDelete.length}`);
+
+  // Delete from right to left (reverse order by index) to avoid index shifting
+  sheetsToDelete.sort(function (a, b) {
+    return b.getIndex() - a.getIndex();
+  });
+
+  for (var i = 0; i < sheetsToDelete.length; i++) {
+    console.log("Deleting sheet: " + sheetsToDelete[i].getName());
+    ss.deleteSheet(sheetsToDelete[i]);
   }
 }
 
