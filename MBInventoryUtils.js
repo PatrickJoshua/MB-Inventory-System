@@ -1320,14 +1320,20 @@ function deleteMalformedNamedInventorySheets(ss = SpreadsheetApp.getActiveSpread
   console.log("Sheets to delete: " + sheetsToDelete.map(function (s) { return s.getName(); }));
   console.log(`Total sheets to delete: ${sheetsToDelete.length}`);
 
-  // Delete from right to left (reverse order by index) to avoid index shifting
-  sheetsToDelete.sort(function (a, b) {
-    return b.getIndex() - a.getIndex();
-  });
-
-  for (var i = 0; i < sheetsToDelete.length; i++) {
-    console.log("Deleting sheet: " + sheetsToDelete[i].getName());
-    ss.deleteSheet(sheetsToDelete[i]);
+  if (sheetsToDelete.length > 0) {
+    const requests = sheetsToDelete.map(function(sheet) {
+      return {
+        deleteSheet: {
+          sheetId: sheet.getSheetId()
+        }
+      };
+    });
+    
+    // Use the Google Sheets Advanced Service for a batch delete
+    Sheets.Spreadsheets.batchUpdate({ requests: requests }, ss.getId());
+    console.log(`Successfully batch deleted ${sheetsToDelete.length} sheets.`);
+  } else {
+    console.log("No sheets to delete.");
   }
 }
 
