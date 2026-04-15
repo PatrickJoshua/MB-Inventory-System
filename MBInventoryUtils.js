@@ -1313,7 +1313,7 @@ function deleteMalformedNamedInventorySheets(ss = SpreadsheetApp.getActiveSpread
   var datePattern = /^[0-9][0-9]\/[0-9][0-9]\/[0-9][0-9] .*/;
 
   // Filter to sheets that do NOT match the date pattern
-  var sheetsToDelete = sheets.filter(function (sheet) {
+  var sheetsToDelete = sheets.slice(4).filter(function (sheet) {
     return !datePattern.test(sheet.getName());
   });
 
