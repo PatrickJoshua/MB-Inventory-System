@@ -138,7 +138,7 @@ function actualNewshift(dateObj, shiftTime, empName, propServ = PropertiesServic
   const endRow = getEndRow();
 
   // Hide salaries
-  concealSalaries(true, '#ffe599', endRow, prevSheet);
+  // concealSalaries(true, '#ffe599', endRow, prevSheet);
 
   //111spreadsheet.getRange('D2:D33').copyTo(spreadsheet.getRange('B2'), SpreadsheetApp.CopyPasteType.PASTE_VALUES, false);
   // [COPY] Reference beginning from previous ending
@@ -351,7 +351,7 @@ function hideOldSheets(unverifiedOnly = false, endRow = getEndRow()) {
     // }
     if ((!sheets[j].isSheetHidden() && !unverifiedOnly) || (!sheets[j].isSheetHidden() && sheets[j].getRange(getTotalCol() + (getEndRow(sheets[j]) + 9)).getValue() == true)) {
       console.log("Hiding sheet: " + sheets[j].getSheetName());
-      concealSalaries(true, '#ffe599', endRow, sheets[j]);
+      // concealSalaries(true, '#ffe599', endRow, sheets[j]);
       sheets[j].hideSheet();
     }
   }
@@ -418,10 +418,10 @@ function showUnverifiedSheets() {
       console.log("Collapsing A2:A" + (endRow + 1));
       sheets[j].getRange("A2:A" + (endRow + 1)).shiftRowGroupDepth(1).collapseGroups();
       //sheets[j].hideRows(endRow-8, 9);
-      concealSalaries(false, '#000000', endRow, sheets[j]);
+      // concealSalaries(false, '#000000', endRow, sheets[j]);
       lastUnverifiedSheet = j;
     } else if (j > sheets.length - 4) {
-      concealSalaries(false, '#000000', endRow, sheets[j]);
+      // concealSalaries(false, '#000000', endRow, sheets[j]);
     } else {
       limit--;
     }
@@ -613,7 +613,7 @@ function addSalesToCashFlow(storeName, dt, sales, gcash, expenses, cashAdvance, 
       }
       */
 
-      concealSalaries(true, '#ffe599', endRow, currentSheet);
+      // concealSalaries(true, '#ffe599', endRow, currentSheet);
       console.log("[POST] Sales collection completed successfully");
 
     } catch (e) {
@@ -934,6 +934,7 @@ function addExpenseToRaw(sheet, expenseSheetPO, expenseSheetPOLastRow, dt, emplo
 }
 
 function concealSalaries(move = false, fontColor = '#ffe599', endRow = getEndRow(), sheet = SpreadsheetApp.getActive().getActiveSheet()) {
+  return; // Temporarily disabled due to bug where values sometimes get deleted
   console.log("Concealing salaries on sheet: " + sheet.getSheetName());
   var expenseCol = getDupFuncCol();
   var expenseValCol = getTotalCol();
