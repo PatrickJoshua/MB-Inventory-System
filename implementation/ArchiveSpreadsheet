@@ -1,0 +1,85 @@
+function _test() {
+    const ss = SpreadsheetApp.getActive();
+    ss.getSheets().slice(-500, -1).filter(s => s.getSheetName().endsWith(" 0") || s.getSheetName().endsWith(" 1") || s.getSheetName().endsWith(" 2") || s.getSheetName().endsWith(" 3") || s.getSheetName().endsWith(" 4") || s.getSheetName().endsWith(" 5") || s.getSheetName().endsWith(" 6") || s.getSheetName().endsWith(" 7") || s.getSheetName().endsWith(" 8") || s.getSheetName().endsWith(" 9")).forEach(s => {
+        if (s.getSheetName() != "Sheet1") {
+            console.log(`Deleting sheet: ${s.getSheetName()}`)
+            ss.deleteSheet(s)
+        }
+    })
+    return
+    //let s = ss.getActiveSheet();
+    //console.log(s.getIndex() + " " + ss.getSheets().length); return
+    const propServ = PropertiesService.getScriptProperties();
+
+    const sheets = ss.getSheets()
+    for (i = parseInt(propServ.getProperty("adhoc")); i > 2; i--) {
+        console.log(`Rasterizing ${sheets[i].getSheetName()}`)
+        const rg = sheets[i].getRange("A1:AH" + sheets[i].getLastRow())
+        rg.setValues(rg.getValues())
+        propServ.setProperty("adhoc", i - 1)
+    }
+}
+
+function _deleteLastNSheets(n) {
+    MBInventorySystem.deleteLastNSheets(5)
+}
+
+function _deleteMalformedNamedInventorySheets() {
+    MBInventorySystem.deleteMalformedNamedInventorySheets(SpreadsheetApp.getActive(),)
+}
+
+function _onEdit(e) {
+    const rg = e.range;
+    if (rg.getA1Notation() === "A1" && rg.isChecked()) {
+        rg.uncheck();
+        Utils.hideSheets(SpreadsheetApp.getActive())
+    }
+}
+
+function _installedOnEditTrigger(e) {
+    if (!e.range.getSheet().getSheetName().includes("Sheet")) {
+        Utils.installedOnEditTrigger(e, PropertiesService)
+    }
+}
+
+function _cleanupCopies() {
+    Utils.cleanupCopies()
+}
+
+function _rasterize() {
+    Utils.rasterizeSheets()
+}
+
+function _deleteEmptyRows() {
+    var scriptProperties = PropertiesService.getScriptProperties();
+    var counter = scriptProperties.getProperty("adhoc");
+
+    // Initialize counter if it doesn't exist
+    if (counter === null) {
+        counter = 2;
+    } else {
+        counter = parseInt(counter); // Parse to integer if it exists
+    }
+
+    // Start of deletion
+    var sheets = SpreadsheetApp.getActive().getSheets();
+    for (counter; counter < sheets.length; counter++) {
+        var sheet = sheets[counter]
+        var lastRow = sheet.getLastRow();
+
+        //console.log(`MaxCols=${sheet.getMaxColumns()}`)
+        if (sheet.getMaxColumns() - 14 > 0) {
+            sheet.deleteColumns(14, sheet.getMaxColumns() - 14)
+        }
+
+        var emptyRowLength = sheet.getMaxRows() - lastRow
+        console.log(`Deleting empty rows on (${counter})${sheet.getSheetName()}: ${lastRow + 1}-${emptyRowLength}`)
+        if (emptyRowLength == 0) {
+            console.log(`Skipping due to 0 empty rows`)
+        } else {
+            sheet.deleteRows(lastRow + 1, emptyRowLength)
+        }
+
+        scriptProperties.setProperty("adhoc", counter.toString()); // Save back as string
+    }
+}
