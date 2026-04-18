@@ -1309,12 +1309,12 @@ function autoFormulaEnding(spreadsheet) {
  * Sheets are deleted from right to left to avoid index shifting issues.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} [ss] The spreadsheet to operate on.
  */
-function deleteMalformedNamedInventorySheets(ss = SpreadsheetApp.getActiveSpreadsheet()) {
+function deleteMalformedNamedInventorySheets(ss = SpreadsheetApp.getActiveSpreadsheet(), startIdx = 4) {
   var sheets = ss.getSheets();
   var datePattern = /^[0-9][0-9]\/[0-9][0-9]\/[0-9][0-9] .*/;
 
   // Filter to sheets that do NOT match the date pattern
-  var sheetsToDelete = sheets.slice(4).filter(function (sheet) {
+  var sheetsToDelete = sheets.slice(startIdx).filter(function (sheet) {
     return !datePattern.test(sheet.getName());
   });
 
@@ -1322,14 +1322,14 @@ function deleteMalformedNamedInventorySheets(ss = SpreadsheetApp.getActiveSpread
   console.log(`Total sheets to delete: ${sheetsToDelete.length}`);
 
   if (sheetsToDelete.length > 0) {
-    const requests = sheetsToDelete.map(function(sheet) {
+    const requests = sheetsToDelete.map(function (sheet) {
       return {
         deleteSheet: {
           sheetId: sheet.getSheetId()
         }
       };
     });
-    
+
     // Use the Google Sheets Advanced Service for a batch delete
     Sheets.Spreadsheets.batchUpdate({ requests: requests }, ss.getId());
     console.log(`Successfully batch deleted ${sheetsToDelete.length} sheets.`);
