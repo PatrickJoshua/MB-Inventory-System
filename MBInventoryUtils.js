@@ -187,7 +187,7 @@ function actualNewshift(dateObj, shiftTime, empName, propServ = PropertiesServic
     'B3:B' + endRow, // sanity del for beg
     'G2:I' + endRow, // Tally and FP
     getPriceCol() + (endRow + 10) + ':' + getTotalCol() + (endRow + 37), // Expenses
-    getLastCol() + (endRow + 10) + ':' + getLastCol() + (endRow + 30), // Expenses Salary indicator
+    getLastCol() + (endRow + 11) + ':' + getLastCol() + (endRow + 30), // Expenses Salary indicator (skip N77 checkbox)
     getLossOverCol() + (endRow + 9), // Validated button label
     'A' + (endRow + 10) + ':' + getPullOutCol() + (endRow + 10 + 18), // gcash rows
     getBegCol() + (endRow + 2) + ':' + getEndingCol() + (endRow + 8), // notes and endorsement
@@ -209,9 +209,9 @@ function actualNewshift(dateObj, shiftTime, empName, propServ = PropertiesServic
   }
   spreadsheet.getRange(`C${bsbRow}:E${cpbRow}`).setFormulas(pattyFormulas);
 
-  spreadsheet.getRange(getTotalCol() + (endRow + 9)).uncheck();                                                                                        // Collect button
+  spreadsheet.getRange(getTotalCol() + (endRow + 9)).uncheck().setFontColor('gray');                                                                   // Collect button
   spreadsheet.getRange(getGcashButtCol() + (endRow + 4)).uncheck();                                                                                    // Gcash button
-  spreadsheet.getRange(getLossOverCol() + (endRow + 10)).setValue(false); // add panukli
+  spreadsheet.getRange(getLossOverCol() + (endRow + 10)).insertCheckboxes().uncheck().setFontColor('gray').setFontSize(8); // Verify delivery checkbox
 
   // Message alerts
   var dayOfWeek = dateObj.getDay();
@@ -313,13 +313,15 @@ function fillNextShiftDetails(dateObj, shiftTime, spreadsheet = SpreadsheetApp.g
 
   var nextDate = dateObj;
   var nextShift = "PM";
+  var skipPm = spreadsheet.getRange(getPullOutCol() + (endRow + 41)).isChecked(); // Skip PM shift if E108 checkbox is ticked
 
   if (shiftTime == "AM") {
     nextShift = "Mid";
-  } else if (shiftTime == "PM") {
+  } else if (shiftTime == "PM" || skipPm) {
     nextShift = "AM";
     nextDate.setDate(nextDate.getDate() + 1);
   }
+
   nextDate = Utilities.formatDate(nextDate, "GMT+8", "MM/dd");
 
   spreadsheet.getRange(getDupFuncCol() + (endRow + 40) + ':' + getDupFuncCol() + (endRow + 42)).setValues([[nextDate], [nextShift], [""]]);

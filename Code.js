@@ -61,6 +61,9 @@ function installedOnEditTriggerInv(e, getPropServ = null, getLockServ = null, en
   const a1Not = rg.getA1Notation();
   try {
     if (rg.isChecked()) {
+      // Ignore skip-PM toggle checkbox (E108)
+      if (a1Not == getPullOutCol() + (endRow + 41)) return;
+
       rg.uncheck();
       SpreadsheetApp.flush();
 
